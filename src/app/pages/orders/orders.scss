@@ -1,0 +1,31 @@
+.card-header {
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 14px;
+}
+
+.discount {
+  color: #14532d;
+  font-size: 12px;
+}
+
+.badge {
+  background: #eee;
+  color: #555;
+}
+.status-paid {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.status-delivered {
+  background: #dcfce7;
+  color: #166534;
+}
+.status-cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+td button {
+  margin-right: 6px;
+}

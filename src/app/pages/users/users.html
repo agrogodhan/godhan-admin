@@ -1,0 +1,52 @@
+<h1>Users</h1>
+
+@if (error()) {
+  <div class="error-banner">{{ error() }}</div>
+}
+
+<div class="card">
+  <div class="card-header">{{ total() }} registered</div>
+
+  @if (loading()) {
+    <p>Loading…</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Mobile</th>
+          <th>Role</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (u of users(); track u._id) {
+          <tr>
+            <td>{{ u.name || '—' }}</td>
+            <td>{{ u.email || '—' }}</td>
+            <td>{{ u.mobile || '—' }}</td>
+            <td><span class="badge role-{{ u.role }}">{{ u.role }}</span></td>
+            <td>
+              @if (updatingId() === u._id) {
+                <span>Updating…</span>
+              } @else {
+                @for (r of roles; track r) {
+                  @if (r !== u.role) {
+                    <button class="btn-outline" (click)="changeRole(u, r)">Make {{ r }}</button>
+                  }
+                }
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="pager">
+      <button class="btn-outline" [disabled]="page() <= 1" (click)="load(page() - 1)">Previous</button>
+      <span>Page {{ page() }} of {{ totalPages() }}</span>
+      <button class="btn-outline" [disabled]="page() >= totalPages()" (click)="load(page() + 1)">Next</button>
+    </div>
+  }
+</div>

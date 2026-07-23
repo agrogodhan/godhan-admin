@@ -1,0 +1,28 @@
+<div class="login-page">
+  <form class="login-card" (ngSubmit)="submit()">
+    <div class="brand">गोधन <span>Admin Portal</span></div>
+
+    @if (error()) {
+      <div class="error-banner">{{ error() }}</div>
+    }
+
+    <div class="form-row">
+      <label for="email">Email</label>
+      <input id="email" type="email" name="email" [(ngModel)]="email" required autocomplete="username" />
+    </div>
+    <div class="form-row">
+      <label for="password">Password</label>
+      <input id="password" type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" />
+    </div>
+
+    <button class="btn" type="submit" [disabled]="loading() || !email || !password">
+      {{ loading() ? 'Signing in…' : 'Sign in' }}
+    </button>
+
+    <p class="hint">
+      Uses the same login as the Godhan farmer app — this account must have been promoted to
+      admin first (see <code>scripts/promoteAdmin.mjs</code> in user-service, or ask another admin
+      to promote you from the Users page).
+    </p>
+  </form>
+</div>

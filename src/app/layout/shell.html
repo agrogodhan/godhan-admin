@@ -1,0 +1,19 @@
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">गोधन <span>Admin</span></div>
+    <nav>
+      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+      <a routerLink="/products" routerLinkActive="active">Dairy Shop Products</a>
+      <a routerLink="/orders" routerLinkActive="active">Orders</a>
+      <a routerLink="/offers" routerLinkActive="active">Offers &amp; Coupons</a>
+      <a routerLink="/users" routerLinkActive="active">Users</a>
+    </nav>
+    <div class="user-box">
+      <div class="user-name">{{ auth.currentUser()?.name || auth.currentUser()?.email }}</div>
+      <button (click)="auth.logout()">Log out</button>
+    </div>
+  </aside>
+  <main class="content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

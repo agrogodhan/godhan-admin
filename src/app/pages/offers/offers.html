@@ -1,0 +1,113 @@
+<h1>Offers &amp; Coupons</h1>
+
+@if (error()) {
+  <div class="error-banner">{{ error() }}</div>
+}
+
+<div class="card">
+  <div class="card-header">
+    <span>Discount codes</span>
+    <button class="btn" (click)="toggleForm()">{{ showForm() ? 'Cancel' : '+ Create offer' }}</button>
+  </div>
+
+  @if (showForm()) {
+    <form class="add-form" (ngSubmit)="createOffer()">
+      @if (formError()) {
+        <div class="error-banner">{{ formError() }}</div>
+      }
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Code</label>
+          <input name="code" [(ngModel)]="form.code" placeholder="e.g. WELCOME10" required />
+        </div>
+        <div class="form-row">
+          <label>Applies to</label>
+          <select name="scope" [(ngModel)]="form.scope">
+            <option value="both">Dairy shop + unlock fee</option>
+            <option value="dairy_shop">Dairy shop only</option>
+            <option value="unlock_fee">Marketplace unlock fee only</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Discount type</label>
+          <select name="discountType" [(ngModel)]="form.discountType">
+            <option value="percent">Percent off</option>
+            <option value="flat">Flat ₹ off</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>{{ form.discountType === 'percent' ? 'Percent (1-100)' : 'Amount (₹)' }}</label>
+          <input name="value" type="number" [(ngModel)]="form.value" required min="1" />
+        </div>
+        @if (form.discountType === 'percent') {
+          <div class="form-row">
+            <label>Max discount (₹, optional cap)</label>
+            <input name="maxDiscount" type="number" [(ngModel)]="form.maxDiscount" min="0" />
+          </div>
+        }
+        <div class="form-row">
+          <label>Min order value (₹)</label>
+          <input name="minOrderValue" type="number" [(ngModel)]="form.minOrderValue" min="0" />
+        </div>
+        <div class="form-row">
+          <label>Category restriction (dairy shop only, optional)</label>
+          <input name="category" [(ngModel)]="form.category" placeholder="feed / medicine / equipment / supplement" />
+        </div>
+        <div class="form-row">
+          <label>Valid until</label>
+          <input name="validUntil" type="date" [(ngModel)]="form.validUntil" required />
+        </div>
+        <div class="form-row">
+          <label>Max uses per farmer</label>
+          <input name="maxUsesPerFarmer" type="number" [(ngModel)]="form.maxUsesPerFarmer" min="1" />
+        </div>
+        <div class="form-row">
+          <label>Max total uses (optional)</label>
+          <input name="maxUsesTotal" type="number" [(ngModel)]="form.maxUsesTotal" min="1" />
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Description (shown to farmers in the broadcast notification)</label>
+        <input name="description" [(ngModel)]="form.description" placeholder="e.g. Independence Day sale" />
+      </div>
+      <button class="btn" type="submit" [disabled]="saving() || !form.code || !form.validUntil">
+        {{ saving() ? 'Creating…' : 'Create offer (notifies every farmer)' }}
+      </button>
+    </form>
+  }
+
+  @if (loading()) {
+    <p>Loading…</p>
+  } @else if (offers().length === 0) {
+    <p>No offers yet.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Discount</th>
+          <th>Scope</th>
+          <th>Valid until</th>
+          <th>Used</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (o of offers(); track o._id) {
+          <tr>
+            <td><strong>{{ o.code }}</strong><br /><span class="muted">{{ o.description }}</span></td>
+            <td>{{ o.discountType === 'percent' ? o.value + '%' : '₹' + o.value }}{{ o.maxDiscount ? ' (cap ₹' + o.maxDiscount + ')' : '' }}</td>
+            <td>{{ o.scope }}</td>
+            <td>{{ o.validUntil | date: 'mediumDate' }}</td>
+            <td>{{ o.usedCount }}{{ o.maxUsesTotal ? ' / ' + o.maxUsesTotal : '' }}</td>
+            <td><span class="badge" [class.active]="o.isActive" [class.inactive]="!o.isActive">{{ o.isActive ? 'Active' : 'Inactive' }}</span></td>
+            <td>
+              <button class="btn-outline" (click)="toggleActive(o)">{{ o.isActive ? 'Deactivate' : 'Activate' }}</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

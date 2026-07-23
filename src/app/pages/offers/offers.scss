@@ -1,0 +1,28 @@
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.add-form {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.muted {
+  color: #888;
+  font-size: 12px;
+}
+
+.badge.active {
+  background: #dcfce7;
+  color: #166534;
+}
+.badge.inactive {
+  background: #eee;
+  color: #666;
+}

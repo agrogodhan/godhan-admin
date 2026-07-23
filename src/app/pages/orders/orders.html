@@ -1,0 +1,59 @@
+<h1>Orders</h1>
+
+@if (error()) {
+  <div class="error-banner">{{ error() }}</div>
+}
+
+<div class="card">
+  <div class="card-header">
+    <span>{{ total() }} total</span>
+  </div>
+
+  @if (loading() && orders().length === 0) {
+    <p>Loading…</p>
+  } @else if (orders().length === 0) {
+    <p>No orders yet.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (o of orders(); track o._id) {
+          <tr>
+            <td>{{ o.createdAt | date: 'medium' }}</td>
+            <td>{{ o.items.length }} item(s) — {{ o.items[0]?.name }}{{ o.items.length > 1 ? ' + ' + (o.items.length - 1) + ' more' : '' }}</td>
+            <td>
+              ₹{{ o.totalAmount }}
+              @if (o.discountAmount > 0) {
+                <span class="discount">(−₹{{ o.discountAmount }})</span>
+              }
+            </td>
+            <td><span class="badge status-{{ o.status }}">{{ o.status }}</span></td>
+            <td>
+              @if (updatingId() === o._id) {
+                <span>Updating…</span>
+              } @else {
+                @for (next of nextStatuses(o.status); track next) {
+                  <button class="btn-outline" (click)="updateStatus(o, next)">Mark {{ next }}</button>
+                }
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (hasMore()) {
+      <button class="btn btn-outline" (click)="loadMore()" [disabled]="loading()">
+        {{ loading() ? 'Loading…' : 'Load more' }}
+      </button>
+    }
+  }
+</div>

@@ -1,0 +1,26 @@
+<h1>Dashboard</h1>
+
+@if (loadError()) {
+  <div class="error-banner">{{ loadError() }}</div>
+}
+
+<div class="tiles">
+  <div class="card tile">
+    <div class="tile-value">{{ userCount() ?? '—' }}</div>
+    <div class="tile-label">Registered users</div>
+  </div>
+  <div class="card tile">
+    <div class="tile-value">{{ orderCount() ?? '—' }}</div>
+    <div class="tile-label">Dairy shop orders</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Getting started</h2>
+  <ul>
+    <li><strong>Dairy Shop Products</strong> — add products to the catalog and adjust stock.</li>
+    <li><strong>Orders</strong> — see every order and mark it delivered or cancelled.</li>
+    <li><strong>Offers &amp; Coupons</strong> — create discount codes; farmers get notified automatically.</li>
+    <li><strong>Users</strong> — look up an account and promote it to admin.</li>
+  </ul>
+</div>
