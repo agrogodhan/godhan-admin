@@ -1,0 +1,132 @@
+<h1>Finance</h1>
+
+@if (error()) {
+  <div class="error-banner">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <p>Loading orders…</p>
+} @else {
+  <div class="tiles">
+    <div class="card tile">
+      <span class="badge badge-real">Real</span>
+      <div class="tile-value">₹{{ summary().revenue | number: '1.0-0' }}</div>
+      <div class="tile-label">Revenue ({{ summary().orderCount }} orders)</div>
+    </div>
+    <div class="card tile">
+      <span class="badge badge-estimate">Estimated</span>
+      <div class="tile-value">₹{{ summary().grossMargin | number: '1.0-0' }}</div>
+      <div class="tile-label">Gross Margin ({{ summary().grossMarginPct | number: '1.0-1' }}%)</div>
+    </div>
+    <div class="card tile">
+      <span class="badge badge-estimate">Estimated</span>
+      <div class="tile-value" [class.negative]="summary().netProfit < 0">₹{{ summary().netProfit | number: '1.0-0' }}</div>
+      <div class="tile-label">Net Profit / Loss</div>
+    </div>
+    <div class="card tile">
+      <span class="badge badge-estimate">Estimated</span>
+      <div class="tile-value" [class.negative]="summary().ebitda < 0">₹{{ summary().ebitda | number: '1.0-0' }}</div>
+      <div class="tile-label">EBITDA</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Revenue trend</h2>
+    @if (summary().monthly.length > 0) {
+      <canvas baseChart [data]="chartData()" [options]="chartOptions" type="line"></canvas>
+    } @else {
+      <p>No realized orders yet.</p>
+    }
+  </div>
+
+  <div class="card">
+    <h2>Assumptions</h2>
+    <p class="hint">
+      Godhan doesn't track procurement cost, marketing spend, or market sizing anywhere yet — enter
+      your best estimates below. They're saved in this browser only.
+    </p>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>COGS mode</label>
+        <select [ngModel]="inputs().cogsMode" (ngModelChange)="updateInput('cogsMode', $event)">
+          <option value="percent">% of revenue</option>
+          <option value="amount">Fixed amount (₹)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>COGS value {{ inputs().cogsMode === 'percent' ? '(%)' : '(₹)' }}</label>
+        <input type="number" [ngModel]="inputs().cogsValue" (ngModelChange)="updateInput('cogsValue', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Marketing spend (₹/mo)</label>
+        <input type="number" [ngModel]="inputs().marketingSpend" (ngModelChange)="updateInput('marketingSpend', $event)" />
+      </div>
+      <div class="form-row">
+        <label>New customers acquired (mo)</label>
+        <input type="number" [ngModel]="inputs().newCustomers" (ngModelChange)="updateInput('newCustomers', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Fixed operating expenses (₹/mo)</label>
+        <input type="number" [ngModel]="inputs().fixedOpex" (ngModelChange)="updateInput('fixedOpex', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Other expenses (₹/mo)</label>
+        <input type="number" [ngModel]="inputs().otherExpenses" (ngModelChange)="updateInput('otherExpenses', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Interest (₹)</label>
+        <input type="number" [ngModel]="inputs().interest" (ngModelChange)="updateInput('interest', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Taxes (₹)</label>
+        <input type="number" [ngModel]="inputs().taxes" (ngModelChange)="updateInput('taxes', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Depreciation (₹)</label>
+        <input type="number" [ngModel]="inputs().depreciation" (ngModelChange)="updateInput('depreciation', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Amortization (₹)</label>
+        <input type="number" [ngModel]="inputs().amortization" (ngModelChange)="updateInput('amortization', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Addressable farmers (TAM)</label>
+        <input type="number" [ngModel]="inputs().addressableFarmers" (ngModelChange)="updateInput('addressableFarmers', $event)" />
+      </div>
+      <div class="form-row">
+        <label>Avg. revenue per farmer (₹/yr)</label>
+        <input type="number" [ngModel]="inputs().avgRevenuePerFarmer" (ngModelChange)="updateInput('avgRevenuePerFarmer', $event)" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Derived metrics</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>CAC (Customer Acquisition Cost)</td>
+          <td>{{ summary().cac !== null ? '₹' + (summary().cac | number: '1.0-2') : '—' }}</td>
+        </tr>
+        <tr>
+          <td>Burn Rate (₹/mo)</td>
+          <td [class.negative]="summary().burnRate > 0">₹{{ summary().burnRate | number: '1.0-0' }}</td>
+        </tr>
+        <tr>
+          <td>TAM (Total Addressable Market)</td>
+          <td>₹{{ summary().tam | number: '1.0-0' }}</td>
+        </tr>
+        <tr>
+          <td>Market Share</td>
+          <td>{{ summary().marketSharePct !== null ? (summary().marketSharePct | number: '1.0-2') + '%' : '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+}
