@@ -7,6 +7,7 @@ import { Orders } from './pages/orders/orders';
 import { Offers } from './pages/offers/offers';
 import { Users } from './pages/users/users';
 import { Finance } from './pages/finance/finance';
+import { Reviews } from './pages/reviews/reviews';
 import { authGuard } from './core/auth.guard';
 
 export const routes: Routes = [
@@ -22,6 +23,7 @@ export const routes: Routes = [
       { path: 'offers', component: Offers },
       { path: 'users', component: Users },
       { path: 'finance', component: Finance },
+      { path: 'reviews', component: Reviews },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
     ],
   },

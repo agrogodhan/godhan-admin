@@ -1,0 +1,45 @@
+<h1>Reviews</h1>
+
+@if (error()) {
+  <div class="error-banner">{{ error() }}</div>
+}
+
+<div class="card">
+  <div class="card-header">
+    <span>Pending reviews</span>
+  </div>
+
+  @if (loading()) {
+    <p>Loading…</p>
+  } @else if (reviews().length === 0) {
+    <p>No reviews waiting for curation.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Farmer</th>
+          <th>Rating</th>
+          <th>Comment</th>
+          <th>Submitted</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of reviews(); track r._id) {
+          <tr>
+            <td>{{ r.productName }}</td>
+            <td>{{ r.userName }}</td>
+            <td><span class="badge rating-badge" [class.high]="ratingBand(r.rating) === 'high'" [class.mid]="ratingBand(r.rating) === 'mid'" [class.low]="ratingBand(r.rating) === 'low'">{{ r.rating }} ★</span></td>
+            <td class="comment-cell">{{ r.comment }}</td>
+            <td>{{ r.date | date: 'mediumDate' }}</td>
+            <td class="actions-cell">
+              <button class="btn" [disabled]="moderatingId() === r._id" (click)="moderate(r, 'approved')">Approve</button>
+              <button class="btn btn-danger" [disabled]="moderatingId() === r._id" (click)="moderate(r, 'rejected')">Reject</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>
