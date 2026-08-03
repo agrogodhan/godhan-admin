@@ -3,6 +3,9 @@
 @if (error()) {
   <div class="error-banner">{{ error() }}</div>
 }
+@if (imageError()) {
+  <div class="error-banner">{{ imageError() }}</div>
+}
 
 <div class="card">
   <div class="card-header">
@@ -67,6 +70,7 @@
     <table>
       <thead>
         <tr>
+          <th>Image</th>
           <th>Name</th>
           <th>Category</th>
           <th>Brand</th>
@@ -78,6 +82,29 @@
       <tbody>
         @for (p of products(); track p._id) {
           <tr>
+            <td>
+              <div class="image-cell">
+                @for (img of p.images; track img) {
+                  <div class="thumb">
+                    <img [src]="img" [alt]="p.name" />
+                    <button class="thumb-remove" type="button" (click)="removeImage(p, img)" title="Remove image">✕</button>
+                  </div>
+                }
+                <label class="thumb-upload" [class.disabled]="uploadingId() === p._id">
+                  @if (uploadingId() === p._id) {
+                    <span>…</span>
+                  } @else {
+                    <span>+</span>
+                  }
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    [disabled]="uploadingId() === p._id"
+                    (change)="onImageFileSelected(p, $event)"
+                  />
+                </label>
+              </div>
+            </td>
             <td>{{ p.name }}</td>
             <td>{{ p.category }}</td>
             <td>{{ p.brand || '—' }}</td>

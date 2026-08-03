@@ -15,6 +15,7 @@ interface Product {
   unit: string;
   stock: number;
   isVerified: boolean;
+  images: string[];
 }
 
 const CATEGORIES = ['feed', 'medicine', 'equipment', 'supplement'];
@@ -42,6 +43,11 @@ export class Products implements OnInit {
   // Which product's stock field is being edited inline, and the pending delta typed so far.
   stockEditId = signal<string | null>(null);
   stockDelta = 0;
+
+  // Which product currently has an image upload in flight — disables that row's controls only,
+  // not the whole page, since uploads are per-product and independent of each other.
+  uploadingId = signal<string | null>(null);
+  imageError = signal<string | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -98,6 +104,46 @@ export class Products implements OnInit {
           this.stockEditId.set(null);
         },
         error: (err) => { this.error.set(apiErrorMessage(err)); this.stockEditId.set(null); },
+      });
+  }
+
+  // Bound to a hidden per-row <input type="file">, triggered by a visible "Upload" button —
+  // same indirection every plain HTML file input needs for custom styling.
+  onImageFileSelected(product: Product, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // allow re-selecting the same filename later
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      this.imageError.set('Only JPEG, PNG or WebP images are supported.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.imageError.set('Image must be under 5 MB.');
+      return;
+    }
+
+    this.imageError.set(null);
+    this.uploadingId.set(product._id);
+    const formData = new FormData();
+    formData.append('image', file);
+    this.http.post<{ data: Product }>(`${API_CONFIG.marketplaceUrl}/product/${product._id}/images`, formData).subscribe({
+      next: (res) => {
+        this.products.set(this.products().map((p) => (p._id === product._id ? res.data : p)));
+        this.uploadingId.set(null);
+      },
+      error: (err) => { this.imageError.set(apiErrorMessage(err)); this.uploadingId.set(null); },
+    });
+  }
+
+  removeImage(product: Product, imageUrl: string): void {
+    this.http.request<{ data: Product }>('DELETE', `${API_CONFIG.marketplaceUrl}/product/${product._id}/images`, { body: { imageUrl } })
+      .subscribe({
+        next: (res) => {
+          this.products.set(this.products().map((p) => (p._id === product._id ? res.data : p)));
+        },
+        error: (err) => { this.imageError.set(apiErrorMessage(err)); },
       });
   }
 }
