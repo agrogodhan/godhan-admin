@@ -1,6 +1,9 @@
-// Dev-only, points at local services the same way godhan-app's ApiConfig.kt does — no build-time
-// environment split exists yet, matching this being a first pass at the admin portal.
+import { environment } from '../../environments/environment';
+
+// Reads from src/environments — environment.ts (dev, localhost) vs environment.prod.ts (hosted
+// Railway services), swapped at build time via angular.json's fileReplacements, same split
+// godhan-app's ApiConfig.kt makes with its USE_HOSTED toggle.
 export const API_CONFIG = {
-  userUrl: 'http://localhost:3001/api/v1',
-  marketplaceUrl: 'http://localhost:3004/marketplace',
+  userUrl: environment.userUrl,
+  marketplaceUrl: environment.marketplaceUrl,
 };
