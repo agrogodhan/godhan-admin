@@ -6,4 +6,5 @@ import { environment } from '../../environments/environment';
 export const API_CONFIG = {
   userUrl: environment.userUrl,
   marketplaceUrl: environment.marketplaceUrl,
+  cattleUrl: environment.cattleUrl,
 };

@@ -3,6 +3,7 @@ import { Shell } from './layout/shell';
 import { Login } from './pages/login/login';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { Products } from './pages/products/products';
+import { Bulls } from './pages/bulls/bulls';
 import { Orders } from './pages/orders/orders';
 import { Offers } from './pages/offers/offers';
 import { Users } from './pages/users/users';
@@ -19,6 +20,7 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', component: Dashboard },
       { path: 'products', component: Products },
+      { path: 'bulls', component: Bulls },
       { path: 'orders', component: Orders },
       { path: 'offers', component: Offers },
       { path: 'users', component: Users },

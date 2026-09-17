@@ -1,0 +1,130 @@
+<h1>Bull / Semen Catalog</h1>
+
+@if (error()) {
+  <div class="error-banner">{{ error() }}</div>
+}
+
+<div class="card">
+  <div class="card-header">
+    <span>Catalog</span>
+    <button class="btn" (click)="toggleForm()">{{ showForm() ? 'Cancel' : '+ Add bull' }}</button>
+  </div>
+
+  @if (showForm()) {
+    <form class="add-form" (ngSubmit)="createBull()">
+      @if (formError()) {
+        <div class="error-banner">{{ formError() }}</div>
+      }
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Breed</label>
+          <input name="breed" [(ngModel)]="form.breed" required placeholder="Holstein Friesian" />
+        </div>
+        <div class="form-row">
+          <label>Type</label>
+          <select name="type" [(ngModel)]="form.type" required>
+            @for (t of types; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Brand</label>
+          <input name="brand" [(ngModel)]="form.brand" placeholder="ABS" />
+        </div>
+        <div class="form-row">
+          <label>Bull name</label>
+          <input name="name" [(ngModel)]="form.name" placeholder="Armada" />
+        </div>
+        <div class="form-row">
+          <label>NDLM Bull ID</label>
+          <input name="tag" [(ngModel)]="form.tag" placeholder="CHI-HF-19593" />
+        </div>
+        <div class="form-row">
+          <label>Semen type</label>
+          <select name="semenType" [(ngModel)]="form.semenType">
+            <option value="">—</option>
+            @for (s of semenTypes; track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Registration number</label>
+          <input name="registrationNumber" [(ngModel)]="form.registrationNumber" />
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Notes</label>
+        <textarea name="notes" [(ngModel)]="form.notes" rows="2"></textarea>
+      </div>
+      <button class="btn" type="submit" [disabled]="saving() || !form.breed">
+        {{ saving() ? 'Saving…' : 'Save bull' }}
+      </button>
+    </form>
+  }
+
+  @if (loading()) {
+    <p>Loading…</p>
+  } @else if (bulls().length === 0) {
+    <p>No bulls in the catalog yet — add the first one above.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Breed</th>
+          <th>Type</th>
+          <th>Brand</th>
+          <th>Name</th>
+          <th>NDLM Bull ID</th>
+          <th>Semen type</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (b of bulls(); track b._id) {
+          @if (editingId() === b._id) {
+            <tr>
+              <td><input [(ngModel)]="editForm.breed" [name]="'ebreed-' + b._id" /></td>
+              <td>
+                <select [(ngModel)]="editForm.type" [name]="'etype-' + b._id">
+                  @for (t of types; track t) {
+                    <option [value]="t">{{ t }}</option>
+                  }
+                </select>
+              </td>
+              <td><input [(ngModel)]="editForm.brand" [name]="'ebrand-' + b._id" /></td>
+              <td><input [(ngModel)]="editForm.name" [name]="'ename-' + b._id" /></td>
+              <td><input [(ngModel)]="editForm.tag" [name]="'etag-' + b._id" /></td>
+              <td>
+                <select [(ngModel)]="editForm.semenType" [name]="'esemen-' + b._id">
+                  <option value="">—</option>
+                  @for (s of semenTypes; track s) {
+                    <option [value]="s">{{ s }}</option>
+                  }
+                </select>
+              </td>
+              <td>
+                <button class="btn-outline" (click)="saveEdit(b)" [disabled]="editSaving()">Save</button>
+                <button class="btn-outline" (click)="cancelEdit()">✕</button>
+              </td>
+            </tr>
+            @if (editError() && editingId() === b._id) {
+              <tr><td colspan="7"><div class="error-banner">{{ editError() }}</div></td></tr>
+            }
+          } @else {
+            <tr>
+              <td>{{ b.breed }}</td>
+              <td>{{ b.type }}</td>
+              <td>{{ b.brand || '—' }}</td>
+              <td>{{ b.name || '—' }}</td>
+              <td>{{ b.tag || '—' }}</td>
+              <td>{{ b.semenType || '—' }}</td>
+              <td><button class="btn-outline" (click)="startEdit(b)">Edit</button></td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  }
+</div>

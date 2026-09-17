@@ -5,4 +5,5 @@ export const environment = {
   production: false,
   userUrl: 'http://localhost:3001/api/v1',
   marketplaceUrl: 'http://localhost:3004/marketplace',
+  cattleUrl: 'http://localhost:3003',
 };

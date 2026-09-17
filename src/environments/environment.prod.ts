@@ -6,4 +6,5 @@ export const environment = {
   production: true,
   userUrl: 'https://user-service-production-e1a8.up.railway.app/api/v1',
   marketplaceUrl: 'https://marketplace-service-production-55a7.up.railway.app/marketplace',
+  cattleUrl: 'https://cattle-service-production.up.railway.app',
 };
