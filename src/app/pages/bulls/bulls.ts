@@ -134,8 +134,16 @@ export class Bulls implements OnInit {
     ['pedigree', 'Has sire / dam data'], ['a2', 'Has A2 status'], ['price', 'Has price'], ['none', 'No genetics at all'],
   ];
 
-  breedFilterOptions = computed(() => [...new Set(this.bulls().map((b) => b.breed))].sort());
-  brandFilterOptions = computed(() => [...new Set(this.bulls().map((b) => b.brand).filter(Boolean))].sort());
+  // The dropdowns narrow each other: type -> its breeds -> the brands that have that type/breed. Picking
+  // "cow" must not offer buffalo breeds, so each list is built only from bulls matching the choices above it.
+  breedFilterOptions = computed(() => {
+    const type = this.fType();
+    return [...new Set(this.bulls().filter((b) => !type || b.type === type).map((b) => b.breed))].sort();
+  });
+  brandFilterOptions = computed(() => {
+    const type = this.fType(), breed = this.fBreed();
+    return [...new Set(this.bulls().filter((b) => (!type || b.type === type) && (!breed || b.breed === breed)).map((b) => b.brand).filter(Boolean))].sort();
+  });
 
   filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -179,6 +187,20 @@ export class Bulls implements OnInit {
       case 'none': return !(bv || tpi || pta || sscr || ped || a2 || price);
       default: return true;
     }
+  }
+
+  // Changing type/breed can leave a lower-level choice that no longer applies (e.g. breed Murrah after
+  // switching to cow) — drop it rather than show an empty list under a stale filter.
+  setTypeFilter(v: string): void {
+    this.fType.set(v);
+    if (this.fBreed() && !this.breedFilterOptions().includes(this.fBreed())) this.fBreed.set('');
+    if (this.fBrand() && !this.brandFilterOptions().includes(this.fBrand())) this.fBrand.set('');
+    this.page.set(1);
+  }
+  setBreedFilter(v: string): void {
+    this.fBreed.set(v);
+    if (this.fBrand() && !this.brandFilterOptions().includes(this.fBrand())) this.fBrand.set('');
+    this.page.set(1);
   }
 
   setFilter(sig: { set(v: string): void }, v: string): void {

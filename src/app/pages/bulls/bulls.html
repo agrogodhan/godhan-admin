@@ -119,11 +119,11 @@
   } @else {
     <div class="filter-bar">
       <input class="filter-search" type="search" placeholder="Search name, ID, brand, registration…" [ngModel]="search()" (ngModelChange)="setFilter(search, $event)" name="f-search" />
-      <select [ngModel]="fType()" (ngModelChange)="setFilter(fType, $event)" name="f-type">
+      <select [ngModel]="fType()" (ngModelChange)="setTypeFilter($event)" name="f-type">
         <option value="">All types</option>
         @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
       </select>
-      <select [ngModel]="fBreed()" (ngModelChange)="setFilter(fBreed, $event)" name="f-breed">
+      <select [ngModel]="fBreed()" (ngModelChange)="setBreedFilter($event)" name="f-breed">
         <option value="">All breeds</option>
         @for (br of breedFilterOptions(); track br) { <option [value]="br">{{ br }}</option> }
       </select>
