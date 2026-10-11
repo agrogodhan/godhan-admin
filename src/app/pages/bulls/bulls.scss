@@ -80,7 +80,31 @@ td select {
   border: 1px solid #e6ece8;
   border-radius: 10px;
 
-  .filter-search { flex: 1 1 260px; min-width: 200px; }
+  // One line on a normal-width screen: the search box takes the spare room and the selects stay compact.
+  .filter-search { flex: 1 1 200px; min-width: 150px; }
+  select { flex: 0 1 auto; max-width: 170px; min-width: 0; text-overflow: ellipsis; }
+
+  .clear-filters {
+    flex: none;
+    position: relative;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 8px;
+    color: #14532d;
+
+    // small cross badge on the funnel
+    .x {
+      position: absolute;
+      right: 5px;
+      bottom: 5px;
+      color: #b91c1c;
+      background: white;
+      border-radius: 50%;
+    }
+
+    &:disabled { opacity: 0.4; }
+  }
 }
 
 .pager {
