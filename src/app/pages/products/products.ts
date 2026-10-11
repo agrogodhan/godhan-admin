@@ -143,8 +143,26 @@ export class Products implements OnInit {
   get canEdit(): boolean { return this.auth.isAdmin; }
 
   ngOnInit(): void {
-    this.http.get<{ data: CategoryDef[] }>(`${this.url}/product/categories`).subscribe({ next: (r) => this.categories.set(r.data) });
-    this.http.get<{ data: { gstRates: number[] } }>(`${this.url}/shop/config`).subscribe({ next: (r) => this.gstRates.set(r.data.gstRates) });
+    this.loadLookups();
+    this.load();
+  }
+
+  // Category tree and GST rates feed the filters and the edit form; a failure is shown once through the page banner
+  // (load() shows its own), not left as an unhandled error in the console.
+  private loadLookups(): void {
+    this.http.get<{ data: CategoryDef[] }>(`${this.url}/product/categories`).subscribe({
+      next: (r) => this.categories.set(r.data),
+      error: (err) => { if (!this.error()) this.error.set(apiErrorMessage(err)); },
+    });
+    this.http.get<{ data: { gstRates: number[] } }>(`${this.url}/shop/config`).subscribe({
+      next: (r) => this.gstRates.set(r.data.gstRates),
+      error: () => { /* keeps the default GST rate list; the Pricing tab still works */ },
+    });
+  }
+
+  retry(): void {
+    this.error.set(null);
+    if (this.categories().length === 0) this.loadLookups();
     this.load();
   }
 

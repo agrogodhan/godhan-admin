@@ -98,6 +98,8 @@
 
   @if (loading()) {
     <p>Loading…</p>
+  } @else if (error()) {
+    <p>The catalog could not be loaded. <button class="btn-outline btn-sm" (click)="retry()">Try again</button></p>
   } @else if (items().length === 0) {
     <p>{{ filtersActive ? 'No products match these filters.' : 'No products yet — add the first one.' }}</p>
   } @else {
