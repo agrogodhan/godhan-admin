@@ -268,7 +268,7 @@
                 <div class="form-row"><label>MRP (₹, required)</label><input type="number" min="0" name="p-mrp" [(ngModel)]="form.mrp" /></div>
                 <div class="form-row"><label>Selling price (₹)</label><input type="number" min="0" name="p-price" [(ngModel)]="form.price" /></div>
                 <div class="form-row"><label>Offer price (₹, optional)</label><input type="number" min="0" name="p-offer" [(ngModel)]="form.offerPrice" />
-                  <small>Shown to farmers from the next app phase; must be lower than the selling price.</small></div>
+                  <small>Farmers see and pay this price until the offer ends; it must be lower than the selling price.</small></div>
                 <div class="form-row"><label>Offer ends</label><input type="date" name="p-offerend" [(ngModel)]="form.offerEndsAt" /></div>
                 <div class="form-row"><label>Unit (kg, L, piece…)</label><input name="p-unit" [(ngModel)]="form.unit" /></div>
                 <div class="form-row"><label>Stock</label><input type="number" min="0" name="p-stock" [(ngModel)]="form.stock" /></div>
