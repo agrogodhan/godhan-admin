@@ -1,0 +1,40 @@
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.hint {
+  max-width: 760px;
+  color: #555;
+  margin: 0 0 16px;
+}
+
+.add-form {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.form-row.check label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+}
+
+td button {
+  margin-left: 8px;
+}
+
+td input:not([type='checkbox']),
+td select {
+  width: 100%;
+}
+
+tr.inactive td {
+  color: #999;
+}

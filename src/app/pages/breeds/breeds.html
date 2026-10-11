@@ -1,0 +1,108 @@
+<h1>Breeds</h1>
+<p class="hint">
+  The one breed list used by the app (Add Cattle, lineage, calving, insemination), the bull catalog and
+  the breed mix. Pick a breed's <strong>aliases</strong> for other spellings people use — they are
+  converted to the breed's name automatically. A breed's name and type can't be changed after it is
+  created; deactivate it instead to hide it from the app's lists.
+</p>
+
+@if (error()) {
+  <div class="error-banner">{{ error() }}</div>
+}
+
+<div class="card">
+  <div class="card-header">
+    <span>Breeds</span>
+    <button class="btn" (click)="toggleForm()">{{ showForm() ? 'Cancel' : '+ Add breed' }}</button>
+  </div>
+
+  @if (showForm()) {
+    <form class="add-form" (ngSubmit)="createBreed()">
+      @if (formError()) {
+        <div class="error-banner">{{ formError() }}</div>
+      }
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Type</label>
+          <select name="type" [(ngModel)]="form.type" required>
+            @for (t of types; track t) {
+              <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Name</label>
+          <input name="name" [(ngModel)]="form.name" required placeholder="Holstein Friesian" />
+        </div>
+        <div class="form-row">
+          <label>Aliases (comma separated)</label>
+          <input name="aliases" [(ngModel)]="form.aliases" placeholder="HF, Holstein" />
+        </div>
+        <div class="form-row">
+          <label>Sort order</label>
+          <input name="sortOrder" type="number" [(ngModel)]="form.sortOrder" />
+        </div>
+      </div>
+      <div class="form-row check">
+        <label>
+          <input name="isPure" type="checkbox" [(ngModel)]="form.isPure" />
+          Pure breed (counts toward the estimated breed mix — leave off for crosses)
+        </label>
+      </div>
+      <button class="btn" type="submit" [disabled]="saving() || !form.name.trim()">
+        {{ saving() ? 'Saving…' : 'Save breed' }}
+      </button>
+    </form>
+  }
+
+  @if (loading()) {
+    <p>Loading…</p>
+  } @else if (breeds().length === 0) {
+    <p>No breeds yet. The app falls back to its built-in list until the breed list has been seeded.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Name</th>
+          <th>Aliases</th>
+          <th>Pure</th>
+          <th>Order</th>
+          <th>Active</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (b of breeds(); track b._id) {
+          @if (editingId() === b._id) {
+            <tr>
+              <td>{{ b.type }}</td>
+              <td>{{ b.name }}</td>
+              <td><input [(ngModel)]="editForm.aliases" [name]="'ealiases-' + b._id" placeholder="HF, Holstein" /></td>
+              <td><input type="checkbox" [(ngModel)]="editForm.isPure" [name]="'epure-' + b._id" /></td>
+              <td><input type="number" [(ngModel)]="editForm.sortOrder" [name]="'eorder-' + b._id" /></td>
+              <td><input type="checkbox" [(ngModel)]="editForm.active" [name]="'eactive-' + b._id" /></td>
+              <td>
+                <button class="btn-outline" (click)="saveEdit(b)" [disabled]="editSaving()">Save</button>
+                <button class="btn-outline" (click)="cancelEdit()">✕</button>
+              </td>
+            </tr>
+            @if (editError() && editingId() === b._id) {
+              <tr><td colspan="7"><div class="error-banner">{{ editError() }}</div></td></tr>
+            }
+          } @else {
+            <tr [class.inactive]="!b.active">
+              <td>{{ b.type }}</td>
+              <td>{{ b.name }}</td>
+              <td>{{ b.aliases.length ? b.aliases.join(', ') : '—' }}</td>
+              <td>{{ b.isPure ? 'Yes' : 'No' }}</td>
+              <td>{{ b.sortOrder }}</td>
+              <td>{{ b.active ? 'Yes' : 'Hidden' }}</td>
+              <td><button class="btn-outline" (click)="startEdit(b)">Edit</button></td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  }
+</div>

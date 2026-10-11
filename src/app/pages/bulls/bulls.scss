@@ -26,3 +26,30 @@ td input,
 td select {
   width: 100%;
 }
+
+.genetics {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 14px 16px;
+
+  h4 {
+    margin: 14px 0 6px;
+  }
+
+  .hint {
+    color: #555;
+    max-width: 820px;
+    margin: 0 0 8px;
+  }
+}
+
+.import-box {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+
+  .hint { color: #555; max-width: 820px; }
+  .import-errors { color: #b3261e; max-height: 220px; overflow: auto; }
+  .ok-banner { background: #e6f4ea; color: #1e6b34; padding: 8px 12px; border-radius: 6px; margin-top: 10px; }
+}

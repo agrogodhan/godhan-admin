@@ -7,8 +7,51 @@
 <div class="card">
   <div class="card-header">
     <span>Catalog</span>
-    <button class="btn" (click)="toggleForm()">{{ showForm() ? 'Cancel' : '+ Add bull' }}</button>
+    <span>
+      <button class="btn" (click)="toggleImport()">{{ showImport() ? 'Close import' : 'Import CSV' }}</button>
+      <button class="btn" (click)="toggleForm()">{{ showForm() ? 'Cancel' : '+ Add bull' }}</button>
+    </span>
   </div>
+
+  @if (showImport()) {
+    <div class="import-box">
+      <p class="hint">
+        Upload a CSV with one bull per row. <b>type, breed, tag</b> are required; a blank cell leaves the stored value
+        unchanged. A bull whose NDLM Bull ID already exists is updated, otherwise it is added. The file is checked first —
+        nothing is saved until you confirm.
+        <a href="javascript:void(0)" (click)="downloadTemplate()">Download column template</a>
+      </p>
+      <input type="file" accept=".csv,text/csv" (change)="onImportFile($event)" [disabled]="importBusy()" />
+      @if (importProgress()) {
+        <p>{{ importProgress() }}</p>
+      }
+      @if (importError()) {
+        <div class="error-banner">{{ importError() }}</div>
+      }
+      @if (preview(); as p) {
+        <p>
+          <b>{{ importFile() }}</b>: {{ p.total }} rows — <b>{{ p.toAdd }}</b> to add, <b>{{ p.toUpdate }}</b> to update,
+          <b>{{ p.errors.length }}</b> with errors (skipped).
+        </p>
+        @if (p.errors.length) {
+          <ul class="import-errors">
+            @for (e of p.errors.slice(0, 25); track e.line) {
+              <li>Row {{ e.line }} {{ e.tag }}: {{ e.message }}</li>
+            }
+          </ul>
+          @if (p.errors.length > 25) {
+            <p>…and {{ p.errors.length - 25 }} more.</p>
+          }
+        }
+        <button class="btn" (click)="runImport(true)" [disabled]="importBusy() || p.toAdd + p.toUpdate === 0">
+          Import {{ p.toAdd + p.toUpdate }} bulls
+        </button>
+      }
+      @if (importDone(); as d) {
+        <div class="ok-banner">Import finished: {{ d.added }} added, {{ d.updated }} updated, {{ d.errors.length }} skipped.</div>
+      }
+    </div>
+  }
 
   @if (showForm()) {
     <form class="add-form" (ngSubmit)="createBull()">
@@ -17,14 +60,19 @@
       }
       <div class="form-grid">
         <div class="form-row">
-          <label>Breed</label>
-          <input name="breed" [(ngModel)]="form.breed" required placeholder="Holstein Friesian" />
-        </div>
-        <div class="form-row">
           <label>Type</label>
-          <select name="type" [(ngModel)]="form.type" required>
+          <select name="type" [ngModel]="form.type" (ngModelChange)="setType(form, $event)" required>
             @for (t of types; track t) {
               <option [value]="t">{{ t }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Breed</label>
+          <select name="breed" [(ngModel)]="form.breed" required>
+            <option value="">Select breed…</option>
+            @for (b of breedsFor(form.type); track b.name) {
+              <option [value]="b.name">{{ b.name }}</option>
             }
           </select>
         </div>
@@ -85,9 +133,18 @@
         @for (b of bulls(); track b._id) {
           @if (editingId() === b._id) {
             <tr>
-              <td><input [(ngModel)]="editForm.breed" [name]="'ebreed-' + b._id" /></td>
               <td>
-                <select [(ngModel)]="editForm.type" [name]="'etype-' + b._id">
+                <select [(ngModel)]="editForm.breed" [name]="'ebreed-' + b._id">
+                  @if (isLegacyBreed(editForm)) {
+                    <option [value]="editForm.breed">{{ editForm.breed }} (not in breed list)</option>
+                  }
+                  @for (br of breedsFor(editForm.type); track br.name) {
+                    <option [value]="br.name">{{ br.name }}</option>
+                  }
+                </select>
+              </td>
+              <td>
+                <select [ngModel]="editForm.type" (ngModelChange)="setType(editForm, $event)" [name]="'etype-' + b._id">
                   @for (t of types; track t) {
                     <option [value]="t">{{ t }}</option>
                   }
@@ -120,8 +177,68 @@
               <td>{{ b.name || '—' }}</td>
               <td>{{ b.tag || '—' }}</td>
               <td>{{ b.semenType || '—' }}</td>
-              <td><button class="btn-outline" (click)="startEdit(b)">Edit</button></td>
+              <td>
+                <button class="btn-outline" (click)="startEdit(b)">Edit</button>
+                <button class="btn-outline" (click)="geneticsId() === b._id ? cancelGenetics() : startGenetics(b)">Genetics</button>
+              </td>
             </tr>
+            @if (geneticsId() === b._id) {
+              <tr>
+                <td colspan="7">
+                  <div class="genetics">
+                    <p class="hint">
+                      Figures that power the app's "suggested bulls". Enter them exactly as the evaluating body publishes them; blank = leave as is.
+                      Breeding value is the bull's own merit for 305-day milk (kg) — his daughters get half. PTA is already the daughters' difference.
+                      TPI / Net Merit are comparable only between bulls of the same breed.
+                    </p>
+                    @if (genError()) {
+                      <div class="error-banner">{{ genError() }}</div>
+                    }
+                    <h4>Availability &amp; price</h4>
+                    <div class="form-grid">
+                      <div class="form-row"><label>Status</label>
+                        <select [(ngModel)]="gen.status" name="g-status-{{ b._id }}"><option value="">—</option><option value="in_production">in production</option><option value="training">training</option><option value="retired">retired (hidden from suggestions)</option></select></div>
+                      <div class="form-row"><label>In stock</label>
+                        <select [(ngModel)]="gen.inStock" name="g-stock-{{ b._id }}"><option value="">—</option><option value="yes">yes</option><option value="no">no (hidden from suggestions)</option></select></div>
+                      <div class="form-row"><label>Date of birth</label><input type="date" [(ngModel)]="gen.dob" name="g-dob-{{ b._id }}" /></div>
+                      <div class="form-row"><label>Price per dose (₹)</label><input type="number" [(ngModel)]="gen.priceInr" name="g-price-{{ b._id }}" /></div>
+                    </div>
+                    <h4>Genetic merit</h4>
+                    <div class="form-grid">
+                      <div class="form-row"><label>Breeding value, 305-day milk (kg)</label><input type="number" [(ngModel)]="gen.bvValue" name="g-bv-{{ b._id }}" /></div>
+                      <div class="form-row"><label>Reliability (%)</label><input type="number" [(ngModel)]="gen.bvReliability" name="g-bvr-{{ b._id }}" /></div>
+                      <div class="form-row"><label>PTA milk (kg/lactation)</label><input type="number" [(ngModel)]="gen.ptaMilkKg" name="g-ptam-{{ b._id }}" /></div>
+                      <div class="form-row"><label>PTA fat (kg)</label><input type="number" [(ngModel)]="gen.ptaFatKg" name="g-ptaf-{{ b._id }}" /></div>
+                      <div class="form-row"><label>PTA protein (kg)</label><input type="number" [(ngModel)]="gen.ptaProteinKg" name="g-ptap-{{ b._id }}" /></div>
+                      <div class="form-row"><label>PTA fat %</label><input type="number" [(ngModel)]="gen.ptaFatPct" name="g-ptafp-{{ b._id }}" /></div>
+                      <div class="form-row"><label>PTA evaluation base</label><input [(ngModel)]="gen.ptaBase" name="g-ptab-{{ b._id }}" placeholder="CDCB 12/2022" /></div>
+                      <div class="form-row"><label>TPI</label><input type="number" [(ngModel)]="gen.tpi" name="g-tpi-{{ b._id }}" /></div>
+                      <div class="form-row"><label>Net Merit ($)</label><input type="number" [(ngModel)]="gen.netMerit" name="g-nm-{{ b._id }}" /></div>
+                    </div>
+                    <h4>Fertility &amp; pedigree</h4>
+                    <div class="form-grid">
+                      <div class="form-row"><label>Conception rate vs average (SSCR, points)</label><input type="number" [(ngModel)]="gen.sscrValue" name="g-ss-{{ b._id }}" /></div>
+                      <div class="form-row"><label>SSCR reliability (%)</label><input type="number" [(ngModel)]="gen.sscrReliability" name="g-ssr-{{ b._id }}" /></div>
+                      <div class="form-row"><label>Total AIs behind it</label><input type="number" [(ngModel)]="gen.sscrAI" name="g-ssa-{{ b._id }}" /></div>
+                      <div class="form-row"><label>Sire's ID (for inbreeding checks)</label><input [(ngModel)]="gen.sireId" name="g-sire-{{ b._id }}" /></div>
+                      <div class="form-row"><label>Dam's best lactation (kg)</label><input type="number" [(ngModel)]="gen.damYieldBest" name="g-dam-{{ b._id }}" /></div>
+                    </div>
+                    <h4>Health tests</h4>
+                    <div class="form-grid">
+                      <div class="form-row"><label>A2 (β-casein)</label>
+                        <select [(ngModel)]="gen.a2" name="g-a2-{{ b._id }}"><option value="">—</option><option value="A2A2">A2A2</option><option value="A1A2">A1A2</option><option value="A1A1">A1A1</option><option value="untested">untested</option></select></div>
+                      @for (t of disorderTests; track t) {
+                        <div class="form-row"><label>{{ t }}</label>
+                          <select [(ngModel)]="gen[t]" name="g-{{ t }}-{{ b._id }}"><option value="">—</option>@for (s of testStates; track s) {<option [value]="s">{{ s }}</option>}</select></div>
+                      }
+                    </div>
+                    <p class="hint">A bull marked <strong>carrier</strong> for any disorder is excluded from suggestions.</p>
+                    <button class="btn" (click)="saveGenetics(b)" [disabled]="genSaving()">{{ genSaving() ? 'Saving…' : 'Save genetics' }}</button>
+                    <button class="btn-outline" (click)="cancelGenetics()">Cancel</button>
+                  </div>
+                </td>
+              </tr>
+            }
           }
         }
       </tbody>
