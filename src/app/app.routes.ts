@@ -3,6 +3,7 @@ import { Shell } from './layout/shell';
 import { Login } from './pages/login/login';
 import { Dashboard } from './pages/dashboard/dashboard';
 import { Products } from './pages/products/products';
+import { ShopSettingsPage } from './pages/shop-settings/shop-settings';
 import { Bulls } from './pages/bulls/bulls';
 import { Breeds } from './pages/breeds/breeds';
 import { Orders } from './pages/orders/orders';
@@ -21,6 +22,7 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', component: Dashboard },
       { path: 'products', component: Products },
+      { path: 'shop-settings', component: ShopSettingsPage },
       { path: 'breeds', component: Breeds },
       { path: 'bulls', component: Bulls },
       { path: 'orders', component: Orders },

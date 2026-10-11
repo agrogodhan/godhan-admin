@@ -3,126 +3,405 @@
 @if (error()) {
   <div class="error-banner">{{ error() }}</div>
 }
-@if (imageError()) {
-  <div class="error-banner">{{ imageError() }}</div>
-}
 
 <div class="card">
   <div class="card-header">
     <span>Catalog</span>
-    <button class="btn" (click)="toggleForm()">{{ showForm() ? 'Cancel' : '+ Add product' }}</button>
+    <span>
+      <button class="btn-outline" (click)="toggleImport()">{{ showImport() ? 'Close import' : 'Import CSV' }}</button>
+      @if (canEdit) {
+        <button class="btn" (click)="openCreate()">+ Add product</button>
+      }
+    </span>
   </div>
 
-  @if (showForm()) {
-    <form class="add-form" (ngSubmit)="createProduct()">
-      @if (formError()) {
-        <div class="error-banner">{{ formError() }}</div>
+  @if (showImport()) {
+    <div class="import-box">
+      <p class="hint">
+        Upload a CSV with one product per row. <b>name, category, price, mrp</b> are required (MRP is mandatory). A product with the same
+        name and brand is updated, otherwise it is added; blank cells leave stored values unchanged. Products with dosage or health claims are
+        imported as <b>draft</b> until a veterinary review is recorded. List cells use <code>|</code>; composition and specifications use
+        <code>Label: value | Label: value</code>; dosage uses <code>animal, age group, amount, frequency | …</code>.
+        <a href="javascript:void(0)" (click)="downloadTemplate()">Download column template</a>
+      </p>
+      <input type="file" accept=".csv,text/csv" (change)="onImportFile($event)" [disabled]="importBusy()" />
+      @if (importProgress()) { <p>{{ importProgress() }}</p> }
+      @if (importError()) { <div class="error-banner">{{ importError() }}</div> }
+      @if (preview(); as pv) {
+        <p>
+          <b>{{ importFile() }}</b>: {{ pv.total }} rows — <b>{{ pv.toAdd }}</b> to add, <b>{{ pv.toUpdate }}</b> to update,
+          <b>{{ pv.forcedDraft }}</b> held as draft (needs veterinary review), <b>{{ pv.errors.length }}</b> with errors (skipped).
+        </p>
+        @if (pv.errors.length) {
+          <ul class="import-errors">
+            @for (e of pv.errors.slice(0, 25); track e.line) { <li>Row {{ e.line }} {{ e.name }}: {{ e.message }}</li> }
+          </ul>
+          @if (pv.errors.length > 25) { <p>…and {{ pv.errors.length - 25 }} more.</p> }
+        }
+        <button class="btn" (click)="runImport(true)" [disabled]="importBusy() || pv.toAdd + pv.toUpdate === 0">Import {{ pv.toAdd + pv.toUpdate }} products</button>
       }
-      <div class="form-grid">
-        <div class="form-row">
-          <label>Name</label>
-          <input name="name" [(ngModel)]="form.name" required />
-        </div>
-        <div class="form-row">
-          <label>Category</label>
-          <select name="category" [(ngModel)]="form.category" required>
-            @for (c of categories; track c) {
-              <option [value]="c">{{ c }}</option>
-            }
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Brand</label>
-          <input name="brand" [(ngModel)]="form.brand" />
-        </div>
-        <div class="form-row">
-          <label>Unit</label>
-          <input name="unit" [(ngModel)]="form.unit" placeholder="kg / strip / piece" />
-        </div>
-        <div class="form-row">
-          <label>Price (₹)</label>
-          <input name="price" type="number" [(ngModel)]="form.price" required min="0" />
-        </div>
-        <div class="form-row">
-          <label>MRP (₹)</label>
-          <input name="mrp" type="number" [(ngModel)]="form.mrp" min="0" />
-        </div>
-        <div class="form-row">
-          <label>Initial stock</label>
-          <input name="stock" type="number" [(ngModel)]="form.stock" min="0" />
-        </div>
-      </div>
-      <div class="form-row">
-        <label>Description</label>
-        <textarea name="description" [(ngModel)]="form.description" rows="2"></textarea>
-      </div>
-      <button class="btn" type="submit" [disabled]="saving() || !form.name || !form.price">
-        {{ saving() ? 'Saving…' : 'Save product' }}
-      </button>
-    </form>
+      @if (importDone(); as dn) {
+        <div class="ok-banner">Import finished: {{ dn.added }} added, {{ dn.updated }} updated, {{ dn.errors.length }} skipped.</div>
+      }
+    </div>
   }
+
+  <div class="filter-bar">
+    <input class="filter-search" type="search" placeholder="Search name, brand, tag…" [ngModel]="search()" (ngModelChange)="onSearch($event)" name="f-search" />
+    <select [ngModel]="fCategory()" (ngModelChange)="setCategoryFilter($event)" name="f-cat">
+      <option value="">Category</option>
+      @for (c of categories(); track c.key) { <option [value]="c.key">{{ c.label }}</option> }
+    </select>
+    <select [ngModel]="fSub()" (ngModelChange)="setFilter(fSub, $event)" name="f-sub" [disabled]="!fCategory()">
+      <option value="">Sub-category</option>
+      @for (s of subOptions(); track s.key) { <option [value]="s.key">{{ s.label }}</option> }
+    </select>
+    <select [ngModel]="fBrand()" (ngModelChange)="setFilter(fBrand, $event)" name="f-brand">
+      <option value="">Brand</option>
+      @for (b of brands(); track b) { <option [value]="b">{{ b }}</option> }
+    </select>
+    <select [ngModel]="fStatus()" (ngModelChange)="setFilter(fStatus, $event)" name="f-status">
+      <option value="">Any status</option>
+      <option value="active">Live</option>
+      <option value="draft">Draft</option>
+      <option value="archived">Archived</option>
+    </select>
+    <select [ngModel]="fLow()" (ngModelChange)="setFilter(fLow, $event)" name="f-low">
+      <option value="">Any stock</option>
+      <option value="true">Low stock (10 or less)</option>
+    </select>
+    <button type="button" class="btn-outline btn-icon clear-filters" (click)="clearFilters()" [disabled]="!filtersActive" title="Clear filters" aria-label="Clear filters">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
+      </svg>
+      <svg class="x" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" aria-hidden="true">
+        <line x1="5" y1="5" x2="19" y2="19" /><line x1="19" y1="5" x2="5" y2="19" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="pager">
+    <span>{{ rangeLabel() }}</span>
+    <span class="pager-controls">
+      <label>Per page
+        <select [ngModel]="pageSize()" (ngModelChange)="setPageSize($event)" name="f-size">
+          @for (n of pageSizes; track n) { <option [value]="n">{{ n }}</option> }
+        </select>
+      </label>
+      <button class="btn-outline btn-sm" (click)="goPage(1)" [disabled]="page() <= 1">«</button>
+      <button class="btn-outline btn-sm" (click)="goPage(page() - 1)" [disabled]="page() <= 1">‹ Prev</button>
+      <span>Page {{ page() }} / {{ pages() }}</span>
+      <button class="btn-outline btn-sm" (click)="goPage(page() + 1)" [disabled]="page() >= pages()">Next ›</button>
+      <button class="btn-outline btn-sm" (click)="goPage(pages())" [disabled]="page() >= pages()">»</button>
+    </span>
+  </div>
 
   @if (loading()) {
     <p>Loading…</p>
-  } @else if (products().length === 0) {
-    <p>No products yet — add the first one above.</p>
+  } @else if (items().length === 0) {
+    <p>{{ filtersActive ? 'No products match these filters.' : 'No products yet — add the first one.' }}</p>
   } @else {
     <table>
       <thead>
         <tr>
-          <th>Image</th>
-          <th>Name</th>
+          <th></th>
+          <th>Product</th>
           <th>Category</th>
-          <th>Brand</th>
           <th>Price</th>
           <th>Stock</th>
+          <th>Status</th>
+          <th>Listing quality</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
-        @for (p of products(); track p._id) {
-          <tr>
+        @for (p of items(); track p._id) {
+          <tr [class.inactive]="p.status === 'archived'">
+            <td class="thumb-cell">
+              @if (p.images.length) { <img class="thumb" [src]="p.images[0]" [alt]="p.name" /> } @else { <div class="thumb empty">No image</div> }
+            </td>
             <td>
-              <div class="image-cell">
-                @for (img of p.images; track img) {
-                  <div class="thumb">
-                    <img [src]="img" [alt]="p.name" />
-                    <button class="thumb-remove" type="button" (click)="removeImage(p, img)" title="Remove image">✕</button>
-                  </div>
-                }
-                <label class="thumb-upload" [class.disabled]="uploadingId() === p._id">
-                  @if (uploadingId() === p._id) {
-                    <span>…</span>
-                  } @else {
-                    <span>+</span>
-                  }
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    [disabled]="uploadingId() === p._id"
-                    (change)="onImageFileSelected(p, $event)"
-                  />
-                </label>
+              <div class="pname">{{ p.name }} @if (p.isVerified) { <span class="badge verified">Verified</span> }</div>
+              <div class="muted">{{ p.brand || '—' }}{{ p.subcategory ? ' · ' + subLabel(p.category, p.subcategory) : '' }}</div>
+            </td>
+            <td>{{ categoryLabel(p.category) }}</td>
+            <td>
+              ₹{{ p.price }} <span class="mrp">₹{{ p.mrp }}</span>
+              @if (discount(p) > 0) { <span class="muted">({{ discount(p) }}% off)</span> }
+              <div class="muted">per {{ p.unit }}</div>
+            </td>
+            <td [class.low]="p.stock <= 10">{{ p.stock }}</td>
+            <td><span class="chip" [class]="'chip ' + (p.status || 'active')">{{ p.status === 'active' || !p.status ? 'Live' : p.status === 'draft' ? 'Draft' : 'Archived' }}</span></td>
+            <td>
+              <div class="quality" [title]="p.quality?.score + '% of the listing checklist done'">
+                <div class="bar"><span [style.width.%]="p.quality?.score ?? 0" [class.good]="(p.quality?.score ?? 0) >= 80"></span></div>
+                <span class="muted">{{ p.quality?.score ?? 0 }}%</span>
               </div>
             </td>
-            <td>{{ p.name }}</td>
-            <td>{{ p.category }}</td>
-            <td>{{ p.brand || '—' }}</td>
-            <td>₹{{ p.price }}</td>
-            <td>
-              @if (stockEditId() === p._id) {
-                <input type="number" [(ngModel)]="stockDelta" [name]="'stock-' + p._id" style="width: 70px" placeholder="+/-" />
-                <button class="btn btn-outline" (click)="applyStockChange(p)">Apply</button>
-                <button class="btn-outline" (click)="cancelStockEdit()">✕</button>
-              } @else {
-                {{ p.stock }}
-                <button class="btn-outline" (click)="startStockEdit(p)">Adjust</button>
-              }
-            </td>
-            <td></td>
+            <td><div class="row-actions"><button class="btn-outline btn-sm" (click)="openDetail(p)">Details</button></div></td>
           </tr>
         }
       </tbody>
     </table>
+    <div class="pager">
+      <span>{{ rangeLabel() }}</span>
+      <span class="pager-controls">
+        <button class="btn-outline btn-sm" (click)="goPage(page() - 1)" [disabled]="page() <= 1">‹ Prev</button>
+        <span>Page {{ page() }} / {{ pages() }}</span>
+        <button class="btn-outline btn-sm" (click)="goPage(page() + 1)" [disabled]="page() >= pages()">Next ›</button>
+      </span>
+    </div>
   }
 </div>
+
+@if (popupOpen) {
+  <div class="modal-backdrop" (click)="closePopup()">
+    <div class="modal wide" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          @if (creating()) {
+            <h2>New product</h2>
+            <div class="sub">Fill in the details, save, then add images.</div>
+          } @else if (detail(); as p) {
+            <h2>{{ p.name }}</h2>
+            <div class="sub">{{ categoryLabel(p.category) }}{{ p.subcategory ? ' · ' + subLabel(p.category, p.subcategory) : '' }} · {{ p.brand || 'no brand' }} ·
+              <span class="chip" [class]="'chip ' + (p.status || 'active')">{{ p.status === 'active' || !p.status ? 'Live' : p.status === 'draft' ? 'Draft' : 'Archived' }}</span></div>
+          }
+        </div>
+        <button class="btn-outline btn-sm btn-icon" (click)="closePopup()" title="Close">✕</button>
+      </div>
+
+      @if (!editing()) {
+        @if (detail(); as p) {
+          <div class="modal-body">
+            @if (p.images.length) {
+              <div class="gallery">
+                @for (img of p.images; track img; let i = $index) { <img [src]="img" [alt]="p.imageAlts?.[i] || p.name" /> }
+              </div>
+            }
+            <h4>Pricing</h4>
+            <dl class="kv">
+              <dt>Selling price / MRP</dt><dd>₹{{ p.price }} / ₹{{ p.mrp }} per {{ p.unit }} @if (discount(p) > 0) { <span class="muted">({{ discount(p) }}% off)</span> }</dd>
+              <dt>Offer price</dt><dd>{{ p.offerPrice ? '₹' + p.offerPrice + (p.offerEndsAt ? ' until ' + d(p.offerEndsAt) : '') : '—' }}</dd>
+              <dt>Stock</dt><dd>{{ p.stock }}</dd>
+              <dt>GST rate / HSN</dt><dd>{{ p.gstRate !== null && p.gstRate !== undefined ? p.gstRate + '%' : '—' }} / {{ v(p.hsnCode) }}</dd>
+            </dl>
+            <h4>Content</h4>
+            <dl class="kv">
+              <dt>Short description</dt><dd>{{ v(p.shortDescription) }}</dd>
+              <dt>Highlights</dt><dd>@if (p.highlights?.length) { <ul class="plain">@for (h of p.highlights; track h) { <li>{{ h }}</li> }</ul> } @else { — }</dd>
+              <dt>Description</dt><dd class="pre">{{ v(p.description) }}</dd>
+              <dt>Suitable for / form</dt><dd>{{ list(p.suitableFor) }} / {{ v(p.form) }}</dd>
+              <dt>Composition</dt><dd>@if (p.composition?.length) { @for (c of p.composition; track c.ingredient) { <div>{{ c.ingredient }}{{ c.amount ? ': ' + c.amount : '' }}</div> } } @else { — }</dd>
+              <dt>Dosage</dt><dd>@if (p.dosage?.length) { @for (x of p.dosage; track $index) { <div>{{ x.animal }} {{ x.ageGroup }} — {{ x.amount }} {{ x.frequency }}</div> } } @else { — }</dd>
+              <dt>How to use</dt><dd class="pre">{{ v(p.howToUse) }}</dd>
+              <dt>Withdrawal period</dt><dd>{{ v(p.withdrawalPeriodDays, ' days') }}</dd>
+              <dt>Warnings</dt><dd class="pre">{{ v(p.warnings) }}</dd>
+              <dt>Storage / shelf life</dt><dd>{{ v(p.storage) }} / {{ v(p.shelfLifeMonths, ' months') }}</dd>
+              <dt>Manufacturer</dt><dd>{{ v(p.manufacturer) }} · {{ v(p.countryOfOrigin) }} · licence {{ v(p.licenceNo) }}</dd>
+              <dt>Certifications</dt><dd>{{ list(p.certifications) }}</dd>
+            </dl>
+            <h4>Specifications</h4>
+            <dl class="kv">
+              @for (s of p.specifications ?? []; track s.label) { <dt>{{ s.label }}</dt><dd>{{ s.value }}</dd> }
+              @if (!p.specifications?.length) { <dt>—</dt><dd>—</dd> }
+            </dl>
+            <h4>Delivery &amp; policy</h4>
+            <dl class="kv">
+              <dt>Returns</dt><dd>No returns (this phase)</dd>
+              <dt>Cash on delivery</dt><dd>{{ p.codAvailable === false ? 'no' : 'yes' }}</dd>
+              <dt>Delivery estimate</dt><dd>{{ v(p.deliveryEstimateDays, ' days') }}</dd>
+              <dt>Free delivery</dt><dd>{{ p.freeDelivery ? 'always' : 'per shop rule' }}</dd>
+            </dl>
+            <h4>Content source &amp; review</h4>
+            <dl class="kv">
+              <dt>Content source</dt><dd>{{ v(p.contentSource?.name) }} {{ p.contentSource?.url ? '(' + p.contentSource?.url + ')' : '' }}</dd>
+              <dt>Veterinary review</dt>
+              <dd>@if (p.needsVetReview) { @if (p.isReviewed) { Reviewed by {{ p.contentReview?.reviewedBy }} on {{ d(p.contentReview?.reviewedAt) }} } @else { <span class="warn">Needed before this can go live</span> } } @else { Not required }</dd>
+            </dl>
+            @if (p.quality) {
+              <h4>Listing quality — {{ p.quality.score }}%</h4>
+              <ul class="checks">
+                @for (c of p.quality.checks; track c.key) { <li [class.ok]="c.ok">{{ c.ok ? '✓' : '○' }} {{ c.label }}</li> }
+              </ul>
+            }
+          </div>
+          <div class="modal-foot">
+            @if (canEdit) {
+              <button class="btn" (click)="startEditing(p)">Edit</button>
+              @if (p.status !== 'archived') { <button class="btn-outline danger" (click)="archive(p)">Archive</button> }
+            }
+            <button class="btn-outline" (click)="closePopup()">Close</button>
+          </div>
+        }
+      } @else {
+        <div class="tabs">
+          @for (t of tabs; track t[0]) {
+            <button type="button" class="tab" [class.active]="tab() === t[0]" (click)="setTab(t[0])">{{ t[1] }}</button>
+          }
+        </div>
+        <div class="modal-body">
+          @if (formError()) { <div class="error-banner">{{ formError() }}</div> }
+
+          @switch (tab()) {
+            @case ('identity') {
+              <div class="form-grid">
+                <div class="form-row wide"><label>Name (brand + product + size)</label><input name="p-name" [(ngModel)]="form.name" maxlength="120" /></div>
+                <div class="form-row"><label>Category</label>
+                  <select name="p-cat" [ngModel]="form.category" (ngModelChange)="onCategoryChange($event)">
+                    @for (c of categories(); track c.key) { <option [value]="c.key">{{ c.label }}</option> }
+                  </select></div>
+                <div class="form-row"><label>Sub-category</label>
+                  <select name="p-sub" [(ngModel)]="form.subcategory"><option value="">—</option>@for (s of subs(form.category); track s.key) { <option [value]="s.key">{{ s.label }}</option> }</select></div>
+                <div class="form-row"><label>Brand</label><input name="p-brand" [(ngModel)]="form.brand" /></div>
+                <div class="form-row"><label>Tags (comma separated)</label><input name="p-tags" [(ngModel)]="form.tags" placeholder="A2, bypass fat" /></div>
+                <div class="form-row"><label>Status</label>
+                  <select name="p-status" [(ngModel)]="form.status">@for (s of statusOptions; track s) { <option [value]="s">{{ s }}</option> }</select>
+                  <small>Products with dosage or health claims can go live only after a veterinary review (Veterinary review tab).</small></div>
+                <div class="form-row check"><label><input type="checkbox" name="p-ver" [(ngModel)]="form.isVerified" /> Godhan Verified badge</label></div>
+              </div>
+            }
+            @case ('pricing') {
+              <div class="form-grid">
+                <div class="form-row"><label>MRP (₹, required)</label><input type="number" min="0" name="p-mrp" [(ngModel)]="form.mrp" /></div>
+                <div class="form-row"><label>Selling price (₹)</label><input type="number" min="0" name="p-price" [(ngModel)]="form.price" /></div>
+                <div class="form-row"><label>Offer price (₹, optional)</label><input type="number" min="0" name="p-offer" [(ngModel)]="form.offerPrice" />
+                  <small>Shown to farmers from the next app phase; must be lower than the selling price.</small></div>
+                <div class="form-row"><label>Offer ends</label><input type="date" name="p-offerend" [(ngModel)]="form.offerEndsAt" /></div>
+                <div class="form-row"><label>Unit (kg, L, piece…)</label><input name="p-unit" [(ngModel)]="form.unit" /></div>
+                <div class="form-row"><label>Stock</label><input type="number" min="0" name="p-stock" [(ngModel)]="form.stock" /></div>
+                <div class="form-row"><label>GST rate (%)</label>
+                  <select name="p-gst" [(ngModel)]="form.gstRate"><option [ngValue]="null">—</option>@for (g of gstRates(); track g) { <option [ngValue]="g">{{ g }}%</option> }</select>
+                  <small>Prices include GST. Rates are managed in Shop Settings.</small></div>
+                <div class="form-row"><label>HSN code</label><input name="p-hsn" [(ngModel)]="form.hsnCode" placeholder="2309" /></div>
+              </div>
+            }
+            @case ('content') {
+              <div class="form-row"><label>Short description (max 160)</label><input name="p-short" [(ngModel)]="form.shortDescription" maxlength="160" /></div>
+              <div class="form-row"><label>Highlights (one per line, 3–6)</label><textarea name="p-high" rows="4" [(ngModel)]="form.highlights"></textarea></div>
+              <div class="form-row"><label>Description</label><textarea name="p-desc" rows="5" [(ngModel)]="form.description"></textarea></div>
+              <div class="form-grid">
+                <div class="form-row"><label>Form</label>
+                  <select name="p-form" [(ngModel)]="form.form"><option value="">—</option>@for (f of formOptions; track f) { <option [value]="f">{{ f }}</option> }</select></div>
+                <div class="form-row"><label>Suitable for</label>
+                  <div class="checks-inline">@for (s of suitableOptions; track s) { <label><input type="checkbox" [checked]="hasSuitable(s)" (change)="toggleSuitable(s)" /> {{ s }}</label> }</div></div>
+                <div class="form-row"><label>Manufacturer</label><input name="p-mfr" [(ngModel)]="form.manufacturer" /></div>
+                <div class="form-row"><label>Country of origin</label><input name="p-coo" [(ngModel)]="form.countryOfOrigin" /></div>
+                <div class="form-row"><label>Licence / registration no.</label><input name="p-lic" [(ngModel)]="form.licenceNo" /></div>
+                <div class="form-row"><label>Certifications (comma separated)</label><input name="p-cert" [(ngModel)]="form.certifications" placeholder="BIS IS 1664" /></div>
+                <div class="form-row"><label>Storage</label><input name="p-store" [(ngModel)]="form.storage" /></div>
+                <div class="form-row"><label>Shelf life (months)</label><input type="number" min="0" name="p-shelf" [(ngModel)]="form.shelfLifeMonths" /></div>
+                <div class="form-row"><label>Video link (optional)</label><input name="p-video" [(ngModel)]="form.videoUrl" /></div>
+              </div>
+
+              <h4>Clinical content <span class="muted">(needs veterinary review — changing it sends a live product back to draft)</span></h4>
+              <div class="form-row"><label>Composition</label>
+                @for (c of form.composition; track $index) {
+                  <div class="row-edit"><input [name]="'c-i' + $index" [(ngModel)]="c.ingredient" placeholder="Ingredient" /><input [name]="'c-a' + $index" [(ngModel)]="c.amount" placeholder="Amount (per kg / ml)" />
+                    <button type="button" class="btn-outline btn-sm btn-icon" (click)="removeRow(form.composition, $index)" title="Remove">✕</button></div>
+                }
+                <button type="button" class="btn-outline btn-sm add" (click)="addRow(form.composition, { ingredient: '', amount: '' })">+ Add ingredient</button></div>
+              <div class="form-row"><label>Dosage</label>
+                @for (x of form.dosage; track $index) {
+                  <div class="row-edit four"><input [name]="'d-a' + $index" [(ngModel)]="x.animal" placeholder="Animal (cow)" /><input [name]="'d-g' + $index" [(ngModel)]="x.ageGroup" placeholder="Age group" />
+                    <input [name]="'d-m' + $index" [(ngModel)]="x.amount" placeholder="Amount (35-50 g)" /><input [name]="'d-f' + $index" [(ngModel)]="x.frequency" placeholder="Frequency (daily)" />
+                    <button type="button" class="btn-outline btn-sm btn-icon" (click)="removeRow(form.dosage, $index)" title="Remove">✕</button></div>
+                }
+                <button type="button" class="btn-outline btn-sm add" (click)="addRow(form.dosage, { animal: '', ageGroup: '', amount: '', frequency: '' })">+ Add dosage row</button></div>
+              <div class="form-row"><label>How to use</label><textarea name="p-how" rows="3" [(ngModel)]="form.howToUse"></textarea></div>
+              <div class="form-grid">
+                <div class="form-row"><label>Milk withdrawal period (days)</label><input type="number" min="0" name="p-wd" [(ngModel)]="form.withdrawalPeriodDays" /></div>
+              </div>
+              <div class="form-row"><label>Warnings and precautions</label><textarea name="p-warn" rows="3" [(ngModel)]="form.warnings"></textarea></div>
+            }
+            @case ('specs') {
+              <p class="hint">Specifications appear as a table on the product page. Use the template to start from the standard rows for this category.</p>
+              @for (s of form.specifications; track $index) {
+                <div class="row-edit"><input [name]="'s-l' + $index" [(ngModel)]="s.label" placeholder="Label" /><input [name]="'s-v' + $index" [(ngModel)]="s.value" placeholder="Value" />
+                  <button type="button" class="btn-outline btn-sm btn-icon" (click)="removeRow(form.specifications, $index)" title="Remove">✕</button></div>
+              }
+              <div class="btn-row">
+                <button type="button" class="btn-outline btn-sm" (click)="addRow(form.specifications, { label: '', value: '' })">+ Add row</button>
+                <button type="button" class="btn-outline btn-sm" (click)="useSpecTemplate()">Use category template</button>
+              </div>
+              <h4>FAQs (optional)</h4>
+              @for (q of form.faqs; track $index) {
+                <div class="row-edit"><input [name]="'q-q' + $index" [(ngModel)]="q.question" placeholder="Question" /><input [name]="'q-a' + $index" [(ngModel)]="q.answer" placeholder="Answer" />
+                  <button type="button" class="btn-outline btn-sm btn-icon" (click)="removeRow(form.faqs, $index)" title="Remove">✕</button></div>
+              }
+              <button type="button" class="btn-outline btn-sm add" (click)="addRow(form.faqs, { question: '', answer: '' })">+ Add FAQ</button>
+            }
+            @case ('media') {
+              @if (creating() || !detail()) {
+                <p class="hint">Save the product first, then add images here (up to {{ maxImages }}; the first image is the card photo).</p>
+              } @else if (detail(); as p) {
+                <p class="hint">Up to {{ maxImages }} images (JPEG, PNG or WebP, 5 MB each). The first image is the card photo. Suggested shots: front, back, ingredients/label, dosage chart, in use, packaging.</p>
+                @if (mediaMsg()) { <div class="info-banner">{{ mediaMsg() }}</div> }
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onFiles($event)" [disabled]="mediaBusy() || p.images.length >= maxImages" />
+                <div class="media-list">
+                  @for (img of p.images; track img; let i = $index) {
+                    <div class="media-item">
+                      <img [src]="img" [alt]="altDraft[i] || p.name" />
+                      <div class="media-fields">
+                        <input [name]="'alt' + i" [(ngModel)]="altDraft[i]" placeholder="Alt text (describe the photo)" maxlength="125" />
+                        <div class="btn-row">
+                          <button type="button" class="btn-outline btn-sm" (click)="move(p, i, i - 1)" [disabled]="i === 0" title="Move up">↑</button>
+                          <button type="button" class="btn-outline btn-sm" (click)="move(p, i, i + 1)" [disabled]="i === p.images.length - 1" title="Move down">↓</button>
+                          <button type="button" class="btn-outline btn-sm" (click)="makePrimary(p, i)" [disabled]="i === 0">{{ i === 0 ? 'Primary' : 'Set as primary' }}</button>
+                          <button type="button" class="btn-outline btn-sm danger" (click)="removeImage(p, img)">Remove</button>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+                @if (p.images.length) { <button type="button" class="btn" (click)="saveOrder(p)" [disabled]="mediaBusy()">Save order &amp; alt text</button> }
+              }
+            }
+            @case ('policy') {
+              <div class="form-grid">
+                <div class="form-row"><label>Returns</label><input value="No returns (this phase)" disabled /></div>
+                <div class="form-row"><label>Delivery estimate (days)</label><input type="number" min="0" name="p-del" [(ngModel)]="form.deliveryEstimateDays" /></div>
+                <div class="form-row check"><label><input type="checkbox" name="p-cod" [(ngModel)]="form.codAvailable" /> Cash on delivery available</label></div>
+                <div class="form-row check"><label><input type="checkbox" name="p-can" [(ngModel)]="form.cancellableUntilShipped" /> Can be cancelled until shipped</label></div>
+                <div class="form-row check"><label><input type="checkbox" name="p-free" [(ngModel)]="form.freeDelivery" /> Always free delivery (overrides the shop rule)</label></div>
+              </div>
+              <h4>Content source</h4>
+              <p class="hint">Manufacturer photos and label text may be reused. Record where they came from; keep label text word for word.</p>
+              <div class="form-grid">
+                <div class="form-row"><label>Source type</label><input name="p-ck" [(ngModel)]="form.contentSource.kind" placeholder="manufacturer label / brochure / website" /></div>
+                <div class="form-row"><label>Source name</label><input name="p-cn" [(ngModel)]="form.contentSource.name" /></div>
+                <div class="form-row wide"><label>Source link</label><input name="p-cu" [(ngModel)]="form.contentSource.url" /></div>
+              </div>
+            }
+            @case ('review') {
+              @if (creating() || !detail()) {
+                <p class="hint">Save the product first. Products with dosage, withdrawal period or health claims need a veterinary review before they can go live.</p>
+              } @else if (detail(); as p) {
+                <p class="hint">Dosage, how-to-use, withdrawal period, warnings and composition must be reviewed by a registered veterinarian before a product goes live. Changing any of them clears the review and returns a live product to draft.</p>
+                @if (p.needsVetReview) {
+                  @if (p.isReviewed) {
+                    <div class="ok-banner">Reviewed by {{ p.contentReview?.reviewedBy }} on {{ d(p.contentReview?.reviewedAt) }}{{ p.contentReview?.note ? ' — ' + p.contentReview?.note : '' }}</div>
+                  } @else {
+                    <div class="info-banner warn">This product has clinical content and has not been reviewed yet.</div>
+                  }
+                  @if (reviewMsg()) { <div class="info-banner">{{ reviewMsg() }}</div> }
+                  <div class="form-grid">
+                    <div class="form-row"><label>Reviewing veterinarian</label><input name="r-by" [(ngModel)]="reviewer" placeholder="Dr. name, registration no." /></div>
+                    <div class="form-row"><label>Note</label><input name="r-note" [(ngModel)]="reviewNote" placeholder="Checked against the manufacturer label" /></div>
+                  </div>
+                  <button type="button" class="btn" (click)="recordReview(p)" [disabled]="!reviewer.trim()">Record review</button>
+                } @else {
+                  <div class="ok-banner">No clinical content on this product — a veterinary review is not required.</div>
+                }
+              }
+            }
+          }
+        </div>
+        <div class="modal-foot">
+          <button class="btn" (click)="save()" [disabled]="saving() || !form.name.trim()">{{ saving() ? 'Saving…' : creating() ? 'Create product' : 'Save changes' }}</button>
+          <button class="btn-outline" (click)="cancelEditing()" [disabled]="saving()">Cancel</button>
+        </div>
+      }
+    </div>
+  </div>
+}
