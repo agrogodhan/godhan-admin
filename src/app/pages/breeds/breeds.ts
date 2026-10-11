@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { API_CONFIG } from '../../core/api-config';
@@ -37,6 +37,61 @@ export class Breeds implements OnInit {
   breeds = signal<AdminBreed[]>([]);
   loading = signal(true);
   error = signal<string | null>(null);
+
+  // ── Filters (same idea as the bull catalog's filter bar) ──
+  search = signal('');
+  fType = signal('');
+  fPure = signal('');   // '' | 'pure' | 'cross'
+  fActive = signal(''); // '' | 'active' | 'hidden'
+
+  filtered = computed(() => {
+    const q = this.search().trim().toLowerCase();
+    const type = this.fType(), pure = this.fPure(), active = this.fActive();
+    return this.breeds().filter((b) => {
+      if (type && b.type !== type) return false;
+      if (pure && b.isPure !== (pure === 'pure')) return false;
+      if (active && b.active !== (active === 'active')) return false;
+      return !q || `${b.name} ${b.aliases.join(' ')}`.toLowerCase().includes(q);
+    });
+  });
+  // ── Pagination (browser-side, like the bull catalog) ──
+  page = signal(1);
+  pageSize = signal(25);
+  pageSizes = [10, 25, 50];
+  totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
+  paged = computed(() => {
+    const start = (Math.min(this.page(), this.totalPages()) - 1) * this.pageSize();
+    return this.filtered().slice(start, start + this.pageSize());
+  });
+  rangeLabel = computed(() => {
+    const n = this.filtered().length, total = this.breeds().length;
+    if (n === 0) return '0 breeds';
+    const start = (Math.min(this.page(), this.totalPages()) - 1) * this.pageSize();
+    const range = `${start + 1}–${Math.min(start + this.pageSize(), n)} of ${n}`;
+    return n === total ? range : `${range} (filtered from ${total})`;
+  });
+  goPage(n: number): void {
+    this.page.set(Math.min(Math.max(1, n), this.totalPages()));
+  }
+  setPageSize(n: number): void {
+    this.pageSize.set(Number(n));
+    this.page.set(1);
+  }
+  // Every filter change returns to the first page.
+  setFilter(sig: { set(v: string): void }, v: string): void {
+    sig.set(v);
+    this.page.set(1);
+  }
+  get filtersActive(): boolean {
+    return !!(this.search() || this.fType() || this.fPure() || this.fActive());
+  }
+  clearFilters(): void {
+    this.search.set('');
+    this.fType.set('');
+    this.fPure.set('');
+    this.fActive.set('');
+    this.page.set(1);
+  }
 
   showForm = signal(false);
   saving = signal(false);

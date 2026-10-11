@@ -60,6 +60,56 @@
   } @else if (breeds().length === 0) {
     <p>No breeds yet. The app falls back to its built-in list until the breed list has been seeded.</p>
   } @else {
+    <div class="filter-bar">
+      <input class="filter-search" type="search" placeholder="Search name or alias…" [ngModel]="search()" (ngModelChange)="setFilter(search, $event)" name="f-search" />
+      <select [ngModel]="fType()" (ngModelChange)="setFilter(fType, $event)" name="f-type">
+        <option value="">All types</option>
+        @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
+      </select>
+      <select [ngModel]="fPure()" (ngModelChange)="setFilter(fPure, $event)" name="f-pure">
+        <option value="">Pure &amp; cross</option>
+        <option value="pure">Pure breeds</option>
+        <option value="cross">Crosses</option>
+      </select>
+      <select [ngModel]="fActive()" (ngModelChange)="setFilter(fActive, $event)" name="f-active">
+        <option value="">Active &amp; hidden</option>
+        <option value="active">Active</option>
+        <option value="hidden">Hidden</option>
+      </select>
+      <button
+        type="button"
+        class="btn-outline btn-icon clear-filters"
+        (click)="clearFilters()"
+        [disabled]="!filtersActive"
+        title="Clear filters"
+        aria-label="Clear filters"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
+        </svg>
+        <svg class="x" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" aria-hidden="true">
+          <line x1="5" y1="5" x2="19" y2="19" /><line x1="19" y1="5" x2="5" y2="19" />
+        </svg>
+      </button>
+    </div>
+    <div class="pager">
+      <span>{{ rangeLabel() }}</span>
+      <span class="pager-controls">
+        <label>Per page
+          <select [ngModel]="pageSize()" (ngModelChange)="setPageSize($event)" name="f-size">
+            @for (n of pageSizes; track n) { <option [value]="n">{{ n }}</option> }
+          </select>
+        </label>
+        <button class="btn-outline btn-sm" (click)="goPage(1)" [disabled]="page() <= 1">«</button>
+        <button class="btn-outline btn-sm" (click)="goPage(page() - 1)" [disabled]="page() <= 1">‹ Prev</button>
+        <span>Page {{ page() }} / {{ totalPages() }}</span>
+        <button class="btn-outline btn-sm" (click)="goPage(page() + 1)" [disabled]="page() >= totalPages()">Next ›</button>
+        <button class="btn-outline btn-sm" (click)="goPage(totalPages())" [disabled]="page() >= totalPages()">»</button>
+      </span>
+    </div>
+    @if (filtered().length === 0) {
+      <p>No breeds match these filters.</p>
+    }
     <table>
       <thead>
         <tr>
@@ -73,7 +123,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (b of breeds(); track b._id) {
+        @for (b of paged(); track b._id) {
           @if (editingId() === b._id) {
             <tr>
               <td>{{ b.type }}</td>
@@ -83,8 +133,8 @@
               <td><input type="number" [(ngModel)]="editForm.sortOrder" [name]="'eorder-' + b._id" /></td>
               <td><input type="checkbox" [(ngModel)]="editForm.active" [name]="'eactive-' + b._id" /></td>
               <td>
-                <button class="btn-outline" (click)="saveEdit(b)" [disabled]="editSaving()">Save</button>
-                <button class="btn-outline" (click)="cancelEdit()">✕</button>
+                <button class="btn btn-sm" (click)="saveEdit(b)" [disabled]="editSaving()">Save</button>
+                <button class="btn-outline btn-sm btn-icon" (click)="cancelEdit()" title="Cancel">✕</button>
               </td>
             </tr>
             @if (editError() && editingId() === b._id) {
@@ -98,11 +148,19 @@
               <td>{{ b.isPure ? 'Yes' : 'No' }}</td>
               <td>{{ b.sortOrder }}</td>
               <td>{{ b.active ? 'Yes' : 'Hidden' }}</td>
-              <td><button class="btn-outline" (click)="startEdit(b)">Edit</button></td>
+              <td><button class="btn-outline btn-sm" (click)="startEdit(b)">Edit</button></td>
             </tr>
           }
         }
       </tbody>
     </table>
+    <div class="pager">
+      <span>{{ rangeLabel() }}</span>
+      <span class="pager-controls">
+        <button class="btn-outline btn-sm" (click)="goPage(page() - 1)" [disabled]="page() <= 1">‹ Prev</button>
+        <span>Page {{ page() }} / {{ totalPages() }}</span>
+        <button class="btn-outline btn-sm" (click)="goPage(page() + 1)" [disabled]="page() >= totalPages()">Next ›</button>
+      </span>
+    </div>
   }
 </div>

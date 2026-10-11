@@ -69,58 +69,6 @@ td select {
   .ok-banner { background: #e6f4ea; color: #1e6b34; padding: 8px 12px; border-radius: 6px; margin-top: 10px; }
 }
 
-.filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 14px;
-  padding: 12px;
-  background: #f6f8f7;
-  border: 1px solid #e6ece8;
-  border-radius: 10px;
-
-  // One line on a normal-width screen: the search box takes the spare room and the selects stay compact.
-  .filter-search { flex: 1 1 200px; min-width: 150px; }
-  select { flex: 0 1 auto; max-width: 170px; min-width: 0; text-overflow: ellipsis; }
-
-  .clear-filters {
-    flex: none;
-    position: relative;
-    width: 38px;
-    height: 38px;
-    padding: 0;
-    border-radius: 8px;
-    color: #14532d;
-
-    // small cross badge on the funnel
-    .x {
-      position: absolute;
-      right: 5px;
-      bottom: 5px;
-      color: #b91c1c;
-      background: white;
-      border-radius: 50%;
-    }
-
-    &:disabled { opacity: 0.4; }
-  }
-}
-
-.pager {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 8px 0;
-  color: #555;
-
-  .pager-controls { display: flex; align-items: center; gap: 8px; }
-  .pager-controls label { display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; font-size: 13px; }
-  .pager-controls select { padding: 4px 8px; }
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
