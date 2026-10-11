@@ -46,49 +46,98 @@ select,
 textarea {
   padding: 8px 10px;
   border: 1px solid #ccc;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
   font-family: inherit;
+  background: white;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus {
+    outline: none;
+    border-color: #14532d;
+    box-shadow: 0 0 0 3px rgba(20, 83, 45, 0.15);
+  }
 }
 
 button {
   font-family: inherit;
 }
 
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  background: #14532d;
-  color: white;
+// Buttons: .btn (filled) and .btn-outline stand on their own — neither needs the other class —
+// and share one base so padding, radius and states match everywhere. .btn-sm is for table rows / pagers.
+.btn,
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 8px;
   font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
 
-  &:hover {
-    background: #1c6a3a;
+  &:focus-visible {
+    outline: 3px solid rgba(20, 83, 45, 0.28);
+    outline-offset: 1px;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+.btn {
+  border: 1px solid transparent;
+  background: linear-gradient(180deg, #1a6b3a 0%, #14532d 100%);
+  color: white;
+  box-shadow: 0 1px 2px rgba(20, 83, 45, 0.35);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(180deg, #1f7a43 0%, #176133 100%);
+    box-shadow: 0 3px 8px rgba(20, 83, 45, 0.3);
   }
 }
 
 .btn-outline {
   background: white;
   color: #14532d;
-  border: 1px solid #14532d;
+  border: 1px solid #b7d3c1;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: #f0f7f2;
+    border-color: #14532d;
   }
 }
 
-.btn-danger {
-  background: #b91c1c;
+.btn-sm {
+  padding: 5px 11px;
+  font-size: 12.5px;
+  border-radius: 6px;
+  gap: 4px;
+}
 
-  &:hover {
-    background: #dc2626;
+.btn-icon {
+  padding: 5px 9px;
+  line-height: 1;
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, #c42525 0%, #b91c1c 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(180deg, #dc2626 0%, #c42525 100%);
+    box-shadow: 0 3px 8px rgba(185, 28, 28, 0.3);
   }
 }
 

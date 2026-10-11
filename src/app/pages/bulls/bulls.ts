@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
@@ -22,11 +22,20 @@ interface CatalogBull {
   priceInr?: number | null;
   tpi?: number | null;
   netMerit?: number | null;
-  breedingValue?: { value?: number; reliability?: number };
-  sscr?: { value?: number; reliability?: number; totalAI?: number };
-  pta?: { milkKg?: number; fatKg?: number; proteinKg?: number; fatPct?: number; proteinPct?: number; base?: string };
-  pedigree?: { sireId?: string; damYieldBest?: number };
-  health?: { a2?: string | null; tests?: Record<string, string | null> };
+  origin?: string | null;
+  exoticLevelPct?: number | null;
+  starRating?: number | null;
+  priceAsOf?: string | null;
+  semenTypes?: string[];
+  breedingValue?: { value?: number; reliability?: number; kind?: string | null; trait?: string; evaluatedOn?: string | null; sourceUrl?: string };
+  sscr?: { value?: number; reliability?: number; totalAI?: number; breedAverage?: number; projects?: string[]; evaluatedOn?: string | null; sourceUrl?: string };
+  pta?: {
+    milkKg?: number; fatKg?: number; proteinKg?: number; fatPct?: number; proteinPct?: number; productiveLife?: number;
+    dpr?: number; scs?: number; calvingEase?: number; base?: string;
+  };
+  pedigree?: { sireName?: string; sireId?: string; damId?: string; damYieldFirst?: number; damYieldBest?: number; damFatPct?: number };
+  health?: { karyotyped?: boolean | null; a2?: string | null; tests?: Record<string, string | null> };
+  dataSources?: Array<{ name?: string; url?: string; asOf?: string | null }>;
 }
 
 // What the Genetics editor edits. Every field is a string: '' means "leave as it is" (a blank never clears a
@@ -109,6 +118,101 @@ export class Bulls implements OnInit {
   bulls = signal<CatalogBull[]>([]);
   breeds = signal<BreedOption[]>([]);
   loading = signal(true);
+
+  // ── Filters + pagination (the catalog is ~1,500 bulls; filtering and paging are done in the browser) ──
+  search = signal('');
+  fType = signal('');
+  fBreed = signal('');
+  fBrand = signal('');
+  fData = signal('');
+  page = signal(1);
+  pageSize = signal(25);
+  pageSizes = [25, 50, 100];
+  dataFilters: Array<[string, string]> = [
+    ['bv', 'Has breeding value'], ['tpi', 'Has TPI / Net Merit'], ['pta', 'Has PTAs'], ['sscr', 'Has conception rate'],
+    ['pedigree', 'Has sire / dam data'], ['a2', 'Has A2 status'], ['price', 'Has price'], ['none', 'No genetics at all'],
+  ];
+
+  breedFilterOptions = computed(() => [...new Set(this.bulls().map((b) => b.breed))].sort());
+  brandFilterOptions = computed(() => [...new Set(this.bulls().map((b) => b.brand).filter(Boolean))].sort());
+
+  filtered = computed(() => {
+    const q = this.search().trim().toLowerCase();
+    const type = this.fType(), breed = this.fBreed(), brand = this.fBrand(), data = this.fData();
+    return this.bulls().filter((b) => {
+      if (type && b.type !== type) return false;
+      if (breed && b.breed !== breed) return false;
+      if (brand && b.brand !== brand) return false;
+      if (q && !`${b.name} ${b.tag} ${b.brand} ${b.registrationNumber} ${b.breed}`.toLowerCase().includes(q)) return false;
+      return !data || this.hasData(b, data);
+    });
+  });
+  totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
+  paged = computed(() => {
+    const start = (Math.min(this.page(), this.totalPages()) - 1) * this.pageSize();
+    return this.filtered().slice(start, start + this.pageSize());
+  });
+  rangeLabel = computed(() => {
+    const n = this.filtered().length;
+    if (n === 0) return '0 bulls';
+    const start = (Math.min(this.page(), this.totalPages()) - 1) * this.pageSize();
+    return `${start + 1}–${Math.min(start + this.pageSize(), n)} of ${n}`;
+  });
+
+  private hasData(b: CatalogBull, kind: string): boolean {
+    const bv = b.breedingValue?.value != null;
+    const tpi = b.tpi != null || b.netMerit != null;
+    const pta = b.pta?.milkKg != null;
+    const sscr = b.sscr?.value != null;
+    const ped = !!(b.pedigree?.sireName || b.pedigree?.sireId || b.pedigree?.damId || b.pedigree?.damYieldBest != null || b.pedigree?.damYieldFirst != null);
+    const a2 = !!b.health?.a2;
+    const price = b.priceInr != null;
+    switch (kind) {
+      case 'bv': return bv;
+      case 'tpi': return tpi;
+      case 'pta': return pta;
+      case 'sscr': return sscr;
+      case 'pedigree': return ped;
+      case 'a2': return a2;
+      case 'price': return price;
+      case 'none': return !(bv || tpi || pta || sscr || ped || a2 || price);
+      default: return true;
+    }
+  }
+
+  setFilter(sig: { set(v: string): void }, v: string): void {
+    sig.set(v);
+    this.page.set(1);
+  }
+  clearFilters(): void {
+    this.search.set(''); this.fType.set(''); this.fBreed.set(''); this.fBrand.set(''); this.fData.set(''); this.page.set(1);
+  }
+  get filtersActive(): boolean {
+    return !!(this.search() || this.fType() || this.fBreed() || this.fBrand() || this.fData());
+  }
+  goPage(n: number): void {
+    this.page.set(Math.min(Math.max(1, n), this.totalPages()));
+  }
+  setPageSize(n: number): void {
+    this.pageSize.set(Number(n));
+    this.page.set(1);
+  }
+
+  // ── Genetics details popup (read-only view of everything stored for a bull) ──
+  detail = signal<CatalogBull | null>(null);
+  openDetail(b: CatalogBull): void { this.detail.set(b); }
+  closeDetail(): void { this.detail.set(null); }
+  editGeneticsFromDetail(b: CatalogBull): void {
+    this.detail.set(null);
+    this.startGenetics(b);
+  }
+  // Shows a number/string, or a dash when it is not recorded.
+  v(x: unknown, suffix = ''): string {
+    return x === null || x === undefined || x === '' ? '—' : `${x}${suffix}`;
+  }
+  d(x: string | null | undefined): string {
+    return x ? x.slice(0, 10) : '—';
+  }
   error = signal<string | null>(null);
 
   showForm = signal(false);

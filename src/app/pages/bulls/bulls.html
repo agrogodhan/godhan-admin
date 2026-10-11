@@ -117,6 +117,48 @@
   } @else if (bulls().length === 0) {
     <p>No bulls in the catalog yet — add the first one above.</p>
   } @else {
+    <div class="filter-bar">
+      <input class="filter-search" type="search" placeholder="Search name, ID, brand, registration…" [ngModel]="search()" (ngModelChange)="setFilter(search, $event)" name="f-search" />
+      <select [ngModel]="fType()" (ngModelChange)="setFilter(fType, $event)" name="f-type">
+        <option value="">All types</option>
+        @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
+      </select>
+      <select [ngModel]="fBreed()" (ngModelChange)="setFilter(fBreed, $event)" name="f-breed">
+        <option value="">All breeds</option>
+        @for (br of breedFilterOptions(); track br) { <option [value]="br">{{ br }}</option> }
+      </select>
+      <select [ngModel]="fBrand()" (ngModelChange)="setFilter(fBrand, $event)" name="f-brand">
+        <option value="">All brands</option>
+        @for (br of brandFilterOptions(); track br) { <option [value]="br">{{ br }}</option> }
+      </select>
+      <select [ngModel]="fData()" (ngModelChange)="setFilter(fData, $event)" name="f-data">
+        <option value="">Any genetics data</option>
+        @for (f of dataFilters; track f[0]) { <option [value]="f[0]">{{ f[1] }}</option> }
+      </select>
+      @if (filtersActive) {
+        <button class="btn-outline btn-sm" (click)="clearFilters()">Clear filters</button>
+      }
+    </div>
+
+    <div class="pager">
+      <span>{{ rangeLabel() }}</span>
+      <span class="pager-controls">
+        <label>Per page
+          <select [ngModel]="pageSize()" (ngModelChange)="setPageSize($event)" name="f-size">
+            @for (n of pageSizes; track n) { <option [value]="n">{{ n }}</option> }
+          </select>
+        </label>
+        <button class="btn-outline btn-sm" (click)="goPage(1)" [disabled]="page() <= 1">«</button>
+        <button class="btn-outline btn-sm" (click)="goPage(page() - 1)" [disabled]="page() <= 1">‹ Prev</button>
+        <span>Page {{ page() }} / {{ totalPages() }}</span>
+        <button class="btn-outline btn-sm" (click)="goPage(page() + 1)" [disabled]="page() >= totalPages()">Next ›</button>
+        <button class="btn-outline btn-sm" (click)="goPage(totalPages())" [disabled]="page() >= totalPages()">»</button>
+      </span>
+    </div>
+
+    @if (filtered().length === 0) {
+      <p>No bulls match these filters.</p>
+    }
     <table>
       <thead>
         <tr>
@@ -130,7 +172,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (b of bulls(); track b._id) {
+        @for (b of paged(); track b._id) {
           @if (editingId() === b._id) {
             <tr>
               <td>
@@ -162,8 +204,10 @@
                 </select>
               </td>
               <td>
-                <button class="btn-outline" (click)="saveEdit(b)" [disabled]="editSaving()">Save</button>
-                <button class="btn-outline" (click)="cancelEdit()">✕</button>
+                <div class="row-actions">
+                  <button class="btn btn-sm" (click)="saveEdit(b)" [disabled]="editSaving()">Save</button>
+                  <button class="btn-outline btn-sm btn-icon" (click)="cancelEdit()" title="Cancel">✕</button>
+                </div>
               </td>
             </tr>
             @if (editError() && editingId() === b._id) {
@@ -178,8 +222,11 @@
               <td>{{ b.tag || '—' }}</td>
               <td>{{ b.semenType || '—' }}</td>
               <td>
-                <button class="btn-outline" (click)="startEdit(b)">Edit</button>
-                <button class="btn-outline" (click)="geneticsId() === b._id ? cancelGenetics() : startGenetics(b)">Genetics</button>
+                <div class="row-actions">
+                  <button class="btn-outline btn-sm" (click)="openDetail(b)">Details</button>
+                  <button class="btn-outline btn-sm" (click)="startEdit(b)">Edit</button>
+                  <button class="btn-outline btn-sm" (click)="geneticsId() === b._id ? cancelGenetics() : startGenetics(b)">Genetics</button>
+                </div>
               </td>
             </tr>
             @if (geneticsId() === b._id) {
@@ -243,5 +290,112 @@
         }
       </tbody>
     </table>
+    <div class="pager">
+      <span>{{ rangeLabel() }}</span>
+      <span class="pager-controls">
+        <button class="btn-outline btn-sm" (click)="goPage(page() - 1)" [disabled]="page() <= 1">‹ Prev</button>
+        <span>Page {{ page() }} / {{ totalPages() }}</span>
+        <button class="btn-outline btn-sm" (click)="goPage(page() + 1)" [disabled]="page() >= totalPages()">Next ›</button>
+      </span>
+    </div>
   }
 </div>
+
+@if (detail(); as b) {
+  <div class="modal-backdrop" (click)="closeDetail()">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-head">
+        <div>
+          <h2>{{ b.name || b.tag }}</h2>
+          <div class="sub">{{ b.breed }} · {{ b.type }} · {{ b.brand || 'no brand' }} · {{ b.tag }}</div>
+        </div>
+        <button class="btn-outline btn-sm btn-icon" (click)="closeDetail()" title="Close">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <h4>Identity</h4>
+        <dl class="kv">
+          <dt>Registration no.</dt><dd>{{ v(b.registrationNumber) }}</dd>
+          <dt>Date of birth</dt><dd>{{ d(b.dob) }}</dd>
+          <dt>Semen types</dt><dd>{{ b.semenTypes?.length ? b.semenTypes!.join(', ') : v(b.semenType) }}</dd>
+          <dt>Origin</dt><dd>{{ v(b.origin) }}</dd>
+          <dt>Exotic blood</dt><dd>{{ v(b.exoticLevelPct, '%') }}</dd>
+          <dt>Star rating</dt><dd>{{ v(b.starRating, ' ★') }}</dd>
+          <dt>Status</dt><dd>{{ v(b.status) }}</dd>
+          <dt>In stock</dt><dd>{{ b.inStock === true ? 'yes' : b.inStock === false ? 'no' : '—' }}</dd>
+          <dt>Price per dose</dt><dd>{{ b.priceInr != null ? '₹' + b.priceInr + (b.priceAsOf ? ' (as of ' + d(b.priceAsOf) + ')' : '') : '—' }}</dd>
+        </dl>
+
+        <h4>Genetic merit</h4>
+        <dl class="kv">
+          <dt>Breeding value (305-day milk)</dt>
+          <dd>{{ b.breedingValue?.value != null ? b.breedingValue!.value + ' kg ' + (b.breedingValue!.kind || '') : '—' }}
+            @if (b.breedingValue?.value != null) {
+              <span class="muted">· reliability {{ v(b.breedingValue!.reliability, '%') }} · evaluated {{ d(b.breedingValue!.evaluatedOn) }}</span>
+            }
+          </dd>
+          <dt>TPI</dt><dd>{{ v(b.tpi) }}</dd>
+          <dt>Net Merit</dt><dd>{{ b.netMerit != null ? '$' + b.netMerit : '—' }}</dd>
+          <dt>PTA milk</dt><dd>{{ v(b.pta?.milkKg, ' kg') }}</dd>
+          <dt>PTA fat</dt><dd>{{ v(b.pta?.fatKg, ' kg') }} {{ b.pta?.fatPct != null ? '(' + b.pta!.fatPct + '%)' : '' }}</dd>
+          <dt>PTA protein</dt><dd>{{ v(b.pta?.proteinKg, ' kg') }} {{ b.pta?.proteinPct != null ? '(' + b.pta!.proteinPct + '%)' : '' }}</dd>
+          <dt>Productive life</dt><dd>{{ v(b.pta?.productiveLife) }}</dd>
+          <dt>Daughter pregnancy rate</dt><dd>{{ v(b.pta?.dpr) }}</dd>
+          <dt>Somatic cell score</dt><dd>{{ v(b.pta?.scs) }}</dd>
+          <dt>Calving ease</dt><dd>{{ v(b.pta?.calvingEase) }}</dd>
+          <dt>PTA evaluation base</dt><dd>{{ v(b.pta?.base) }}</dd>
+        </dl>
+
+        <h4>Fertility</h4>
+        <dl class="kv">
+          <dt>Conception rate vs average (SSCR)</dt>
+          <dd>{{ b.sscr?.value != null ? (b.sscr!.value! > 0 ? '+' : '') + b.sscr!.value + ' points' : '—' }}
+            @if (b.sscr?.value != null) {
+              <span class="muted">· reliability {{ v(b.sscr!.reliability, '%') }} · {{ v(b.sscr!.totalAI) }} AIs · breed average {{ v(b.sscr!.breedAverage, '%') }}</span>
+            }
+          </dd>
+          @if (b.sscr?.projects?.length) {
+            <dt>SSCR projects</dt><dd>{{ b.sscr!.projects!.join(', ') }}</dd>
+          }
+        </dl>
+
+        <h4>Pedigree</h4>
+        <dl class="kv">
+          <dt>Sire</dt><dd>{{ v(b.pedigree?.sireName) }}{{ b.pedigree?.sireId ? ' (' + b.pedigree!.sireId + ')' : '' }}</dd>
+          <dt>Dam</dt><dd>{{ v(b.pedigree?.damId) }}</dd>
+          <dt>Dam's first lactation</dt><dd>{{ v(b.pedigree?.damYieldFirst, ' kg') }}</dd>
+          <dt>Dam's best lactation</dt><dd>{{ v(b.pedigree?.damYieldBest, ' kg') }}</dd>
+          <dt>Dam's fat</dt><dd>{{ v(b.pedigree?.damFatPct, '%') }}</dd>
+        </dl>
+
+        <h4>Health</h4>
+        <dl class="kv">
+          <dt>A2 (β-casein)</dt><dd>{{ v(b.health?.a2) }}</dd>
+          <dt>Karyotyped</dt><dd>{{ b.health?.karyotyped === true ? 'yes' : b.health?.karyotyped === false ? 'no' : '—' }}</dd>
+          @for (t of disorderTests; track t) {
+            <dt>{{ t }}</dt>
+            <dd [class.carrier]="b.health?.tests?.[t] === 'carrier'">{{ v(b.health?.tests?.[t]) }}</dd>
+          }
+        </dl>
+
+        @if (b.notes) {
+          <h4>Notes</h4>
+          <p class="notes">{{ b.notes }}</p>
+        }
+        @if (b.dataSources?.length) {
+          <h4>Sources</h4>
+          <ul class="sources">
+            @for (s of b.dataSources; track $index) {
+              <li>{{ s.name }}@if (s.url) { — <a [href]="s.url" target="_blank" rel="noopener">link</a> } @if (s.asOf) { <span class="muted">({{ d(s.asOf) }})</span> }</li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn" (click)="editGeneticsFromDetail(b)">Edit genetics</button>
+        <button class="btn-outline" (click)="closeDetail()">Close</button>
+      </div>
+    </div>
+  </div>
+}
