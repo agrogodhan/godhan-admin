@@ -173,120 +173,19 @@
       </thead>
       <tbody>
         @for (b of paged(); track b._id) {
-          @if (editingId() === b._id) {
-            <tr>
-              <td>
-                <select [(ngModel)]="editForm.breed" [name]="'ebreed-' + b._id">
-                  @if (isLegacyBreed(editForm)) {
-                    <option [value]="editForm.breed">{{ editForm.breed }} (not in breed list)</option>
-                  }
-                  @for (br of breedsFor(editForm.type); track br.name) {
-                    <option [value]="br.name">{{ br.name }}</option>
-                  }
-                </select>
-              </td>
-              <td>
-                <select [ngModel]="editForm.type" (ngModelChange)="setType(editForm, $event)" [name]="'etype-' + b._id">
-                  @for (t of types; track t) {
-                    <option [value]="t">{{ t }}</option>
-                  }
-                </select>
-              </td>
-              <td><input [(ngModel)]="editForm.brand" [name]="'ebrand-' + b._id" /></td>
-              <td><input [(ngModel)]="editForm.name" [name]="'ename-' + b._id" /></td>
-              <td><input [(ngModel)]="editForm.tag" [name]="'etag-' + b._id" /></td>
-              <td>
-                <select [(ngModel)]="editForm.semenType" [name]="'esemen-' + b._id">
-                  <option value="">—</option>
-                  @for (s of semenTypes; track s) {
-                    <option [value]="s">{{ s }}</option>
-                  }
-                </select>
-              </td>
-              <td>
-                <div class="row-actions">
-                  <button class="btn btn-sm" (click)="saveEdit(b)" [disabled]="editSaving()">Save</button>
-                  <button class="btn-outline btn-sm btn-icon" (click)="cancelEdit()" title="Cancel">✕</button>
-                </div>
-              </td>
-            </tr>
-            @if (editError() && editingId() === b._id) {
-              <tr><td colspan="7"><div class="error-banner">{{ editError() }}</div></td></tr>
-            }
-          } @else {
-            <tr>
-              <td>{{ b.breed }}</td>
-              <td>{{ b.type }}</td>
-              <td>{{ b.brand || '—' }}</td>
-              <td>{{ b.name || '—' }}</td>
-              <td>{{ b.tag || '—' }}</td>
-              <td>{{ b.semenType || '—' }}</td>
-              <td>
-                <div class="row-actions">
-                  <button class="btn-outline btn-sm" (click)="openDetail(b)">Details</button>
-                  <button class="btn-outline btn-sm" (click)="startEdit(b)">Edit</button>
-                  <button class="btn-outline btn-sm" (click)="geneticsId() === b._id ? cancelGenetics() : startGenetics(b)">Genetics</button>
-                </div>
-              </td>
-            </tr>
-            @if (geneticsId() === b._id) {
-              <tr>
-                <td colspan="7">
-                  <div class="genetics">
-                    <p class="hint">
-                      Figures that power the app's "suggested bulls". Enter them exactly as the evaluating body publishes them; blank = leave as is.
-                      Breeding value is the bull's own merit for 305-day milk (kg) — his daughters get half. PTA is already the daughters' difference.
-                      TPI / Net Merit are comparable only between bulls of the same breed.
-                    </p>
-                    @if (genError()) {
-                      <div class="error-banner">{{ genError() }}</div>
-                    }
-                    <h4>Availability &amp; price</h4>
-                    <div class="form-grid">
-                      <div class="form-row"><label>Status</label>
-                        <select [(ngModel)]="gen.status" name="g-status-{{ b._id }}"><option value="">—</option><option value="in_production">in production</option><option value="training">training</option><option value="retired">retired (hidden from suggestions)</option></select></div>
-                      <div class="form-row"><label>In stock</label>
-                        <select [(ngModel)]="gen.inStock" name="g-stock-{{ b._id }}"><option value="">—</option><option value="yes">yes</option><option value="no">no (hidden from suggestions)</option></select></div>
-                      <div class="form-row"><label>Date of birth</label><input type="date" [(ngModel)]="gen.dob" name="g-dob-{{ b._id }}" /></div>
-                      <div class="form-row"><label>Price per dose (₹)</label><input type="number" [(ngModel)]="gen.priceInr" name="g-price-{{ b._id }}" /></div>
-                    </div>
-                    <h4>Genetic merit</h4>
-                    <div class="form-grid">
-                      <div class="form-row"><label>Breeding value, 305-day milk (kg)</label><input type="number" [(ngModel)]="gen.bvValue" name="g-bv-{{ b._id }}" /></div>
-                      <div class="form-row"><label>Reliability (%)</label><input type="number" [(ngModel)]="gen.bvReliability" name="g-bvr-{{ b._id }}" /></div>
-                      <div class="form-row"><label>PTA milk (kg/lactation)</label><input type="number" [(ngModel)]="gen.ptaMilkKg" name="g-ptam-{{ b._id }}" /></div>
-                      <div class="form-row"><label>PTA fat (kg)</label><input type="number" [(ngModel)]="gen.ptaFatKg" name="g-ptaf-{{ b._id }}" /></div>
-                      <div class="form-row"><label>PTA protein (kg)</label><input type="number" [(ngModel)]="gen.ptaProteinKg" name="g-ptap-{{ b._id }}" /></div>
-                      <div class="form-row"><label>PTA fat %</label><input type="number" [(ngModel)]="gen.ptaFatPct" name="g-ptafp-{{ b._id }}" /></div>
-                      <div class="form-row"><label>PTA evaluation base</label><input [(ngModel)]="gen.ptaBase" name="g-ptab-{{ b._id }}" placeholder="CDCB 12/2022" /></div>
-                      <div class="form-row"><label>TPI</label><input type="number" [(ngModel)]="gen.tpi" name="g-tpi-{{ b._id }}" /></div>
-                      <div class="form-row"><label>Net Merit ($)</label><input type="number" [(ngModel)]="gen.netMerit" name="g-nm-{{ b._id }}" /></div>
-                    </div>
-                    <h4>Fertility &amp; pedigree</h4>
-                    <div class="form-grid">
-                      <div class="form-row"><label>Conception rate vs average (SSCR, points)</label><input type="number" [(ngModel)]="gen.sscrValue" name="g-ss-{{ b._id }}" /></div>
-                      <div class="form-row"><label>SSCR reliability (%)</label><input type="number" [(ngModel)]="gen.sscrReliability" name="g-ssr-{{ b._id }}" /></div>
-                      <div class="form-row"><label>Total AIs behind it</label><input type="number" [(ngModel)]="gen.sscrAI" name="g-ssa-{{ b._id }}" /></div>
-                      <div class="form-row"><label>Sire's ID (for inbreeding checks)</label><input [(ngModel)]="gen.sireId" name="g-sire-{{ b._id }}" /></div>
-                      <div class="form-row"><label>Dam's best lactation (kg)</label><input type="number" [(ngModel)]="gen.damYieldBest" name="g-dam-{{ b._id }}" /></div>
-                    </div>
-                    <h4>Health tests</h4>
-                    <div class="form-grid">
-                      <div class="form-row"><label>A2 (β-casein)</label>
-                        <select [(ngModel)]="gen.a2" name="g-a2-{{ b._id }}"><option value="">—</option><option value="A2A2">A2A2</option><option value="A1A2">A1A2</option><option value="A1A1">A1A1</option><option value="untested">untested</option></select></div>
-                      @for (t of disorderTests; track t) {
-                        <div class="form-row"><label>{{ t }}</label>
-                          <select [(ngModel)]="gen[t]" name="g-{{ t }}-{{ b._id }}"><option value="">—</option>@for (s of testStates; track s) {<option [value]="s">{{ s }}</option>}</select></div>
-                      }
-                    </div>
-                    <p class="hint">A bull marked <strong>carrier</strong> for any disorder is excluded from suggestions.</p>
-                    <button class="btn" (click)="saveGenetics(b)" [disabled]="genSaving()">{{ genSaving() ? 'Saving…' : 'Save genetics' }}</button>
-                    <button class="btn-outline" (click)="cancelGenetics()">Cancel</button>
-                  </div>
-                </td>
-              </tr>
-            }
-          }
+          <tr>
+            <td>{{ b.breed }}</td>
+            <td>{{ b.type }}</td>
+            <td>{{ b.brand || '—' }}</td>
+            <td>{{ b.name || '—' }}</td>
+            <td>{{ b.tag || '—' }}</td>
+            <td>{{ b.semenType || '—' }}</td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-outline btn-sm" (click)="openDetail(b)">Details</button>
+              </div>
+            </td>
+          </tr>
         }
       </tbody>
     </table>
@@ -312,6 +211,7 @@
         <button class="btn-outline btn-sm btn-icon" (click)="closeDetail()" title="Close">✕</button>
       </div>
 
+      @if (!editing()) {
       <div class="modal-body">
         <h4>Identity</h4>
         <dl class="kv">
@@ -392,10 +292,91 @@
         }
       </div>
 
-      <div class="modal-foot">
-        <button class="btn" (click)="editGeneticsFromDetail(b)">Edit genetics</button>
-        <button class="btn-outline" (click)="closeDetail()">Close</button>
-      </div>
+        <div class="modal-foot">
+          @if (canEdit) {
+            <button class="btn" (click)="startEditing(b)">Edit</button>
+          }
+          <button class="btn-outline" (click)="closeDetail()">Close</button>
+        </div>
+      } @else {
+        <div class="modal-body">
+          @if (editError()) {
+            <div class="error-banner">{{ editError() }}</div>
+          }
+          <p class="hint">
+            Figures that power the app suggested bulls. Enter them exactly as the evaluating body publishes them; a blank cell leaves the stored value as it is.
+            Breeding value is the bull's own merit for 305-day milk (kg), and his daughters get half. PTA is already the daughters' difference.
+            TPI / Net Merit are comparable only between bulls of the same breed.
+          </p>
+          <h4>Identity</h4>
+          <div class="form-grid">
+            <div class="form-row"><label>Type</label>
+              <select name="e-type" [ngModel]="editForm.type" (ngModelChange)="setType(editForm, $event)">
+                @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
+              </select></div>
+            <div class="form-row"><label>Breed</label>
+              <select name="e-breed" [(ngModel)]="editForm.breed">
+                @if (isLegacyBreed(editForm)) { <option [value]="editForm.breed">{{ editForm.breed }} (not in breed list)</option> }
+                @for (br of breedsFor(editForm.type); track br.name) { <option [value]="br.name">{{ br.name }}</option> }
+              </select></div>
+            <div class="form-row"><label>Brand</label><input name="e-brand" [(ngModel)]="editForm.brand" /></div>
+            <div class="form-row"><label>Bull name</label><input name="e-name" [(ngModel)]="editForm.name" /></div>
+            <div class="form-row"><label>NDLM Bull ID</label><input name="e-tag" [(ngModel)]="editForm.tag" /></div>
+            <div class="form-row"><label>Registration number</label><input name="e-reg" [(ngModel)]="editForm.registrationNumber" /></div>
+            <div class="form-row"><label>Semen type</label>
+              <select name="e-semen" [(ngModel)]="editForm.semenType"><option value="">—</option>@for (s of semenTypes; track s) { <option [value]="s">{{ s }}</option> }</select></div>
+          </div>
+          <div class="form-row"><label>Notes</label><textarea name="e-notes" [(ngModel)]="editForm.notes" rows="2"></textarea></div>
+
+          <h4>Availability &amp; price</h4>
+          <div class="form-grid">
+            <div class="form-row"><label>Status</label>
+              <select name="g-status" [(ngModel)]="gen.status"><option value="">—</option><option value="in_production">in production</option><option value="training">training</option><option value="retired">retired (hidden from suggestions)</option></select></div>
+            <div class="form-row"><label>In stock</label>
+              <select name="g-stock" [(ngModel)]="gen.inStock"><option value="">—</option><option value="yes">yes</option><option value="no">no (hidden from suggestions)</option></select></div>
+            <div class="form-row"><label>Date of birth</label><input type="date" name="g-dob" [(ngModel)]="gen.dob" /></div>
+            <div class="form-row"><label>Price per dose (₹)</label><input type="number" name="g-price" [(ngModel)]="gen.priceInr" /></div>
+          </div>
+
+          <h4>Genetic merit</h4>
+          <div class="form-grid">
+            <div class="form-row"><label>Breeding value, 305-day milk (kg)</label><input type="number" name="g-bv" [(ngModel)]="gen.bvValue" /></div>
+            <div class="form-row"><label>Reliability (%)</label><input type="number" name="g-bvr" [(ngModel)]="gen.bvReliability" /></div>
+            <div class="form-row"><label>PTA milk (kg/lactation)</label><input type="number" name="g-ptam" [(ngModel)]="gen.ptaMilkKg" /></div>
+            <div class="form-row"><label>PTA fat (kg)</label><input type="number" name="g-ptaf" [(ngModel)]="gen.ptaFatKg" /></div>
+            <div class="form-row"><label>PTA protein (kg)</label><input type="number" name="g-ptap" [(ngModel)]="gen.ptaProteinKg" /></div>
+            <div class="form-row"><label>PTA fat %</label><input type="number" name="g-ptafp" [(ngModel)]="gen.ptaFatPct" /></div>
+            <div class="form-row"><label>PTA evaluation base</label><input name="g-ptab" [(ngModel)]="gen.ptaBase" placeholder="CDCB 12/2022" /></div>
+            <div class="form-row"><label>TPI</label><input type="number" name="g-tpi" [(ngModel)]="gen.tpi" /></div>
+            <div class="form-row"><label>Net Merit ($)</label><input type="number" name="g-nm" [(ngModel)]="gen.netMerit" /></div>
+          </div>
+
+          <h4>Fertility &amp; pedigree</h4>
+          <div class="form-grid">
+            <div class="form-row"><label>Conception rate vs average (SSCR, points)</label><input type="number" name="g-ss" [(ngModel)]="gen.sscrValue" /></div>
+            <div class="form-row"><label>SSCR reliability (%)</label><input type="number" name="g-ssr" [(ngModel)]="gen.sscrReliability" /></div>
+            <div class="form-row"><label>Total AIs behind it</label><input type="number" name="g-ssa" [(ngModel)]="gen.sscrAI" /></div>
+            <div class="form-row"><label>Sire ID (for inbreeding checks)</label><input name="g-sire" [(ngModel)]="gen.sireId" /></div>
+            <div class="form-row"><label>Dam best lactation (kg)</label><input type="number" name="g-dam" [(ngModel)]="gen.damYieldBest" /></div>
+          </div>
+
+          <h4>Health tests</h4>
+          <div class="form-grid">
+            <div class="form-row"><label>A2 (β-casein)</label>
+              <select name="g-a2" [(ngModel)]="gen.a2"><option value="">—</option><option value="A2A2">A2A2</option><option value="A1A2">A1A2</option><option value="A1A1">A1A1</option><option value="untested">untested</option></select></div>
+            @for (t of disorderTests; track t) {
+              <div class="form-row"><label>{{ t }}</label>
+                <select [name]="'g-' + t" [(ngModel)]="gen[t]"><option value="">—</option>@for (s of testStates; track s) { <option [value]="s">{{ s }}</option> }</select></div>
+            }
+          </div>
+          <p class="hint">A bull marked <strong>carrier</strong> for any disorder is excluded from suggestions.</p>
+        </div>
+
+        <div class="modal-foot">
+          <button class="btn" (click)="saveAll(b)" [disabled]="editSaving() || !editForm.breed">{{ editSaving() ? 'Saving…' : 'Save changes' }}</button>
+          <button class="btn-outline" (click)="cancelEditing()" [disabled]="editSaving()">Cancel</button>
+        </div>
+      }
     </div>
   </div>
 }

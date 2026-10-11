@@ -33,6 +33,43 @@
     margin-top: 8px;
   }
 
+  .password-field {
+    position: relative;
+
+    input {
+      width: 100%;
+      padding-right: 44px; // room for the eye button
+    }
+
+    .toggle-password {
+      position: absolute;
+      top: 50%;
+      right: 6px;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #6b7a70;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+
+      &:hover {
+        background: #f0f7f2;
+        color: #14532d;
+      }
+
+      &:focus-visible {
+        outline: 3px solid rgba(20, 83, 45, 0.28);
+      }
+    }
+  }
+
   .hint {
     font-size: 12px;
     color: #888;

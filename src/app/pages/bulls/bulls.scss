@@ -165,3 +165,29 @@ td select {
 @media (max-width: 560px) {
   .modal .kv { grid-template-columns: 1fr; }
 }
+
+.modal .hint {
+  color: #555;
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+// Popup close button: a fixed round icon button (it was stretching to the header height).
+.modal .modal-head .btn-icon {
+  flex: none;
+  align-self: flex-start;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 16px;
+  color: #555;
+  border-color: #d9e2dc;
+
+  &:hover:not(:disabled) {
+    background: #fdecec;
+    border-color: #e5a3a3;
+    color: #b91c1c;
+  }
+}

@@ -18,6 +18,7 @@ export class Login {
   email = '';
   password = '';
   loading = signal(false);
+  showPassword = signal(false);
   error = signal<string | null>(null);
 
   async submit(): Promise<void> {

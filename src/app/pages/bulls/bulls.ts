@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { API_CONFIG } from '../../core/api-config';
 import { apiErrorMessage } from '../../core/api-error';
+import { AuthService } from '../../core/auth.service';
 
 interface CatalogBull {
   _id: string;
@@ -198,13 +199,34 @@ export class Bulls implements OnInit {
     this.page.set(1);
   }
 
-  // ── Genetics details popup (read-only view of everything stored for a bull) ──
+  // ── Details popup: view everything stored for a bull; an admin can switch it to edit mode and save ──
+  private auth = inject(AuthService);
   detail = signal<CatalogBull | null>(null);
-  openDetail(b: CatalogBull): void { this.detail.set(b); }
-  closeDetail(): void { this.detail.set(null); }
-  editGeneticsFromDetail(b: CatalogBull): void {
+  editing = signal(false);
+  get canEdit(): boolean { return this.auth.isAdmin; }
+
+  openDetail(b: CatalogBull): void {
+    this.detail.set(b);
+    this.editing.set(false);
+    this.editError.set(null);
+  }
+  closeDetail(): void {
     this.detail.set(null);
-    this.startGenetics(b);
+    this.editing.set(false);
+  }
+  startEditing(b: CatalogBull): void {
+    if (!this.canEdit) return;
+    this.editError.set(null);
+    this.editForm = {
+      breed: b.breed, type: b.type, brand: b.brand, name: b.name, tag: b.tag,
+      semenType: b.semenType ?? '', registrationNumber: b.registrationNumber, notes: b.notes,
+    };
+    this.loadGenetics(b);
+    this.editing.set(true);
+  }
+  cancelEditing(): void {
+    this.editing.set(false);
+    this.editError.set(null);
   }
   // Shows a number/string, or a dash when it is not recorded.
   v(x: unknown, suffix = ''): string {
@@ -220,7 +242,6 @@ export class Bulls implements OnInit {
   formError = signal<string | null>(null);
   form = this.blankForm();
 
-  editingId = signal<string | null>(null);
   editForm = this.blankForm();
   editSaving = signal(false);
   editError = signal<string | null>(null);
@@ -287,25 +308,6 @@ export class Bulls implements OnInit {
       },
       error: (err) => { this.formError.set(apiErrorMessage(err)); this.saving.set(false); },
     });
-  }
-
-  startEdit(bull: CatalogBull): void {
-    this.editingId.set(bull._id);
-    this.editError.set(null);
-    this.editForm = {
-      breed: bull.breed,
-      type: bull.type,
-      brand: bull.brand,
-      name: bull.name,
-      tag: bull.tag,
-      semenType: bull.semenType ?? '',
-      registrationNumber: bull.registrationNumber,
-      notes: bull.notes,
-    };
-  }
-
-  cancelEdit(): void {
-    this.editingId.set(null);
   }
 
   // ── CSV import ──
@@ -388,10 +390,7 @@ export class Bulls implements OnInit {
   // ── Genetics editor (inputs of the suggested-bulls ranking) ──
   testStates = TEST_STATES;
   disorderTests = DISORDER_TESTS;
-  geneticsId = signal<string | null>(null);
   gen: GeneticsForm = this.blankGenetics();
-  genSaving = signal(false);
-  genError = signal<string | null>(null);
 
   private blankGenetics(): GeneticsForm {
     return {
@@ -401,10 +400,8 @@ export class Bulls implements OnInit {
     };
   }
 
-  startGenetics(b: CatalogBull): void {
+  private loadGenetics(b: CatalogBull): void {
     const s = (v: unknown) => (v === null || v === undefined ? '' : String(v));
-    this.geneticsId.set(b._id);
-    this.genError.set(null);
     this.gen = {
       status: s(b.status), inStock: b.inStock === true ? 'yes' : b.inStock === false ? 'no' : '', dob: s(b.dob).slice(0, 10), priceInr: s(b.priceInr),
       bvValue: s(b.breedingValue?.value), bvReliability: s(b.breedingValue?.reliability),
@@ -416,49 +413,40 @@ export class Bulls implements OnInit {
     };
   }
 
-  cancelGenetics(): void {
-    this.geneticsId.set(null);
-  }
-
-  saveGenetics(b: CatalogBull): void {
+  // Genetics cells as dotted-path update keys. A blank never clears a stored figure.
+  private geneticsPayload(): Record<string, unknown> {
     const g = this.gen;
     const p: Record<string, unknown> = {};
-    const num = (key: string, v: string) => { if (v.trim() !== '' && Number.isFinite(Number(v))) p[key] = Number(v); };
-    const txt = (key: string, v: string) => { if (v.trim() !== '') p[key] = v.trim(); };
+    // type="number" inputs bound with ngModel hold numbers (or null), not strings — normalise before trimming.
+    const str = (v: unknown) => (v === null || v === undefined ? '' : String(v).trim());
+    const num = (key: string, v: unknown) => { if (str(v) !== '' && Number.isFinite(Number(v))) p[key] = Number(v); };
+    const txt = (key: string, v: unknown) => { if (str(v) !== '') p[key] = str(v); };
     txt('status', g.status);
     if (g.inStock) p['inStock'] = g.inStock === 'yes';
     txt('dob', g.dob);
     num('priceInr', g.priceInr);
     num('breedingValue.value', g.bvValue); num('breedingValue.reliability', g.bvReliability);
-    if (g.bvValue.trim() !== '') { p['breedingValue.kind'] = 'GBV'; p['breedingValue.trait'] = '305DMY'; }
+    if (str(g.bvValue) !== '') { p['breedingValue.kind'] = 'GBV'; p['breedingValue.trait'] = '305DMY'; }
     num('sscr.value', g.sscrValue); num('sscr.reliability', g.sscrReliability); num('sscr.totalAI', g.sscrAI);
     num('pta.milkKg', g.ptaMilkKg); num('pta.fatKg', g.ptaFatKg); num('pta.proteinKg', g.ptaProteinKg); num('pta.fatPct', g.ptaFatPct); txt('pta.base', g.ptaBase);
     num('tpi', g.tpi); num('netMerit', g.netMerit);
     txt('health.a2', g.a2); txt('pedigree.sireId', g.sireId); num('pedigree.damYieldBest', g.damYieldBest);
     for (const t of DISORDER_TESTS) txt(`health.tests.${t}`, g[t]);
-    if (Object.keys(p).length === 0) { this.genError.set('Nothing to save — fill in at least one figure.'); return; }
-
-    this.genSaving.set(true);
-    this.genError.set(null);
-    this.http.put<{ data: CatalogBull }>(`${API_CONFIG.cattleUrl}/bulls/admin/${b._id}`, p).subscribe({
-      next: (res) => {
-        this.bulls.set(this.bulls().map((x) => (x._id === b._id ? res.data : x)));
-        this.genSaving.set(false);
-        this.geneticsId.set(null);
-      },
-      error: (err) => { this.genError.set(apiErrorMessage(err)); this.genSaving.set(false); },
-    });
+    return p;
   }
 
-  saveEdit(bull: CatalogBull): void {
+  // One save for the whole popup: identity fields + genetics in a single admin PUT.
+  saveAll(b: CatalogBull): void {
+    if (!this.canEdit) return;
     this.editSaving.set(true);
     this.editError.set(null);
-    const payload = { ...this.editForm, semenType: this.editForm.semenType || null };
-    this.http.put<{ data: CatalogBull }>(`${API_CONFIG.cattleUrl}/bulls/admin/${bull._id}`, payload).subscribe({
+    const payload = { ...this.editForm, semenType: this.editForm.semenType || null, ...this.geneticsPayload() };
+    this.http.put<{ data: CatalogBull }>(`${API_CONFIG.cattleUrl}/bulls/admin/${b._id}`, payload).subscribe({
       next: (res) => {
-        this.bulls.set(this.bulls().map((b) => (b._id === bull._id ? res.data : b)));
+        this.bulls.set(this.bulls().map((x) => (x._id === b._id ? res.data : x)));
+        this.detail.set(res.data);
         this.editSaving.set(false);
-        this.editingId.set(null);
+        this.editing.set(false);
       },
       error: (err) => { this.editError.set(apiErrorMessage(err)); this.editSaving.set(false); },
     });
