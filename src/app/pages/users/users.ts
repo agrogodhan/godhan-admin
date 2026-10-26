@@ -14,7 +14,7 @@ interface UsersResponse {
   data: { users: User[]; page: number; totalPages: number; total: number };
 }
 
-const ROLES = ['farmer', 'hub', 'admin'];
+const ROLES = ['farmer', 'hub', 'admin', 'vet'];
 
 @Component({
   selector: 'app-users',

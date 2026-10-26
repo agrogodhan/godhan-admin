@@ -11,7 +11,10 @@ import { Offers } from './pages/offers/offers';
 import { Users } from './pages/users/users';
 import { Finance } from './pages/finance/finance';
 import { Reviews } from './pages/reviews/reviews';
-import { authGuard } from './core/auth.guard';
+import { Knowledge } from './pages/knowledge/knowledge';
+import { authGuard, adminGuard } from './core/auth.guard';
+import { AuthService } from './core/auth.service';
+import { inject } from '@angular/core';
 
 export const routes: Routes = [
   { path: 'login', component: Login },
@@ -20,17 +23,19 @@ export const routes: Routes = [
     component: Shell,
     canActivate: [authGuard],
     children: [
-      { path: 'dashboard', component: Dashboard },
-      { path: 'products', component: Products },
-      { path: 'shop-settings', component: ShopSettingsPage },
-      { path: 'breeds', component: Breeds },
-      { path: 'bulls', component: Bulls },
-      { path: 'orders', component: Orders },
-      { path: 'offers', component: Offers },
-      { path: 'users', component: Users },
-      { path: 'finance', component: Finance },
-      { path: 'reviews', component: Reviews },
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      // Knowledge review is the only screen a vet can open; everything else is admin-only (adminGuard).
+      { path: 'knowledge', component: Knowledge },
+      { path: 'dashboard', component: Dashboard, canActivate: [adminGuard] },
+      { path: 'products', component: Products, canActivate: [adminGuard] },
+      { path: 'shop-settings', component: ShopSettingsPage, canActivate: [adminGuard] },
+      { path: 'breeds', component: Breeds, canActivate: [adminGuard] },
+      { path: 'bulls', component: Bulls, canActivate: [adminGuard] },
+      { path: 'orders', component: Orders, canActivate: [adminGuard] },
+      { path: 'offers', component: Offers, canActivate: [adminGuard] },
+      { path: 'users', component: Users, canActivate: [adminGuard] },
+      { path: 'finance', component: Finance, canActivate: [adminGuard] },
+      { path: 'reviews', component: Reviews, canActivate: [adminGuard] },
+      { path: '', redirectTo: () => (inject(AuthService).isVet ? 'knowledge' : 'dashboard'), pathMatch: 'full' },
     ],
   },
   { path: '**', redirectTo: '' },

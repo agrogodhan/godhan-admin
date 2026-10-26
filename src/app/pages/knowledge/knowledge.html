@@ -1,0 +1,116 @@
+<h1>Chatbot Knowledge</h1>
+<p class="hint">
+  What the chatbot learns from educational dairy videos. Entries are drafted from the videos' captions, which can
+  contain mistakes, so check each one against what a farmer should be told.
+  @if (isVet()) {
+    You are reviewing as a <strong>vet</strong>: you can approve every entry, including medicines, equipment, doses and brands.
+  } @else {
+    You can approve ordinary guidance (feed, housing, milking, management). Entries marked
+    <strong>Needs a vet</strong> can only be approved by a vet.
+  }
+</p>
+
+@if (error()) {
+  <div class="error-banner">{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="notice" (click)="notice.set(null)">{{ notice() }}</div>
+}
+
+<div class="tabs">
+  <button [class.on]="tab() === 'pending'" (click)="setTab('pending')">To review ({{ counts()['pending'] }})</button>
+  <button [class.on]="tab() === 'approved'" (click)="setTab('approved')">Approved ({{ counts()['approved'] }})</button>
+  <button [class.on]="tab() === 'rejected'" (click)="setTab('rejected')">Rejected ({{ counts()['rejected'] }})</button>
+  <button [class.on]="tab() === 'live'" (click)="setTab('live')">Live in the chatbot</button>
+</div>
+
+<div class="filter-bar">
+  <input class="filter-search" type="search" placeholder="Search…" [ngModel]="search()" (ngModelChange)="search.set($event); limit.set(20)" name="q" />
+  <select [ngModel]="topicFilter()" (ngModelChange)="topicFilter.set($event); limit.set(20)" name="topic">
+    <option value="">All topics</option>
+    @for (t of topics; track t) { <option [value]="t">{{ t }}</option> }
+  </select>
+  @if (tab() === 'pending') {
+    <label class="check"><input type="checkbox" [ngModel]="vetOnly()" (ngModelChange)="vetOnly.set($event); limit.set(20)" name="vetonly" /> Needs a vet only</label>
+  }
+</div>
+
+@if (loading()) {
+  <p>Loading…</p>
+} @else if (tab() === 'live') {
+  <p class="count">{{ visibleGuides().length }} guides the chatbot can find. Switch one off to stop it being used; nothing is deleted.</p>
+  @if (visibleGuides().length === 0) { <p>No guides yet.</p> }
+  @for (g of shownGuides(); track g._id) {
+    <div class="entry" [class.off]="!g.active">
+      <div class="entry-head">
+        <strong>{{ g.title }}</strong>
+        <span class="chip">{{ g.topic }}</span>
+        <span class="chip" [class.vet]="g.reviewerRole === 'vet'">{{ g.reviewerRole === 'vet' ? 'Vet approved' : 'Owner approved' }}{{ g.reviewedBy ? ': ' + g.reviewedBy : '' }}</span>
+        @if (!g.active) { <span class="chip warn">Switched off</span> }
+      </div>
+      <p class="body">{{ g.text }}</p>
+      <div class="actions">
+        @if (g.source?.url) { <a [href]="g.source!.url" target="_blank" rel="noopener">Watch the video</a> }
+        <button class="btn-outline btn-sm" (click)="toggleGuide(g)" [disabled]="busyId() === g._id">{{ g.active ? 'Switch off' : 'Switch on' }}</button>
+      </div>
+    </div>
+  }
+  @if (shownGuides().length < visibleGuides().length) {
+    <button class="btn-outline" (click)="more()">Show more</button>
+  }
+} @else {
+  <p class="count">{{ visibleDrafts().length }} entries{{ visibleDrafts().length !== drafts().length ? ' (filtered from ' + drafts().length + ')' : '' }}</p>
+  @if (visibleDrafts().length === 0) {
+    <p>{{ tab() === 'pending' ? 'Nothing waiting for review.' : 'Nothing here.' }}</p>
+  }
+  @for (d of shownDrafts(); track d._id) {
+    <div class="entry">
+      @if (editingId() === d._id) {
+        <div class="form-row"><label>Title</label><input [(ngModel)]="edit.title" [name]="'t-' + d._id" /></div>
+        <div class="form-row"><label>Text</label><textarea rows="6" [(ngModel)]="edit.text" [name]="'x-' + d._id"></textarea></div>
+        <div class="form-row"><label>Tags (comma separated)</label><input [(ngModel)]="edit.tags" [name]="'g-' + d._id" /></div>
+        @if (isVet()) {
+          <div class="form-grid">
+            <div class="form-row"><label>Topic</label>
+              <select [(ngModel)]="edit.topic" [name]="'p-' + d._id">@for (t of topics; track t) { <option [value]="t">{{ t }}</option> }</select>
+            </div>
+            <div class="form-row"><label>Risk</label>
+              <select [(ngModel)]="edit.riskLevel" [name]="'r-' + d._id"><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select>
+            </div>
+            <div class="form-row check"><label><input type="checkbox" [(ngModel)]="edit.commercial" [name]="'c-' + d._id" /> Mentions a brand or promotion</label></div>
+          </div>
+        }
+        @if (editError()) { <div class="error-banner">{{ editError() }}</div> }
+        <div class="actions">
+          <button class="btn btn-sm" (click)="saveEdit(d)" [disabled]="busyId() === d._id">Save</button>
+          <button class="btn-outline btn-sm" (click)="cancelEdit()">Cancel</button>
+        </div>
+      } @else {
+        <div class="entry-head">
+          <strong>{{ d.title }}</strong>
+          <span class="chip">{{ d.topic }}</span>
+          <span class="chip" [class.high]="d.riskLevel === 'high'">risk: {{ d.riskLevel }}</span>
+          @if (d.needsVet) { <span class="chip warn">Needs a vet</span> }
+          @if (d.commercial) { <span class="chip warn">Brand</span> }
+          @if (d.status !== 'pending' && d.reviewedBy) { <span class="chip" [class.vet]="d.reviewerRole === 'vet'">{{ d.status }} by {{ d.reviewedBy }}</span> }
+        </div>
+        <p class="body">{{ d.text }}</p>
+        @if (d.products.length) { <p class="check-line"><strong>Products named:</strong> {{ d.products.join('; ') }}</p> }
+        @if (d.doses.length) { <p class="check-line"><strong>Doses mentioned (check carefully):</strong> {{ d.doses.join('; ') }}</p> }
+        @if (d.tags.length) { <p class="tags">{{ d.tags.join(' · ') }}</p> }
+        <div class="actions">
+          @if (d.source?.url) { <a [href]="d.source!.url" target="_blank" rel="noopener">Watch at {{ clock(d.source!.timestampSec) }}</a> }
+          @if (d.status === 'pending') {
+            <button class="btn btn-sm" (click)="approve(d)" [disabled]="!canApprove(d) || busyId() === d._id" [title]="approvalNote(d)">Approve</button>
+            <button class="btn-outline btn-sm" (click)="startEdit(d)" [disabled]="busyId() === d._id">Edit</button>
+            <button class="btn-outline btn-sm danger" (click)="reject(d)" [disabled]="busyId() === d._id">Reject</button>
+            @if (!canApprove(d)) { <span class="note">{{ approvalNote(d) }}</span> }
+          }
+        </div>
+      }
+    </div>
+  }
+  @if (shownDrafts().length < visibleDrafts().length) {
+    <button class="btn-outline" (click)="more()">Show more</button>
+  }
+}

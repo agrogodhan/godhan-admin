@@ -1,0 +1,149 @@
+.hint {
+  max-width: 760px;
+  color: #555;
+  margin: 0 0 16px;
+}
+
+.notice {
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+
+  button {
+    background: none;
+    border: none;
+    padding: 10px 14px;
+    cursor: pointer;
+    color: #555;
+    border-bottom: 3px solid transparent;
+    font: inherit;
+
+    &.on {
+      color: #166534;
+      border-bottom-color: #166534;
+      font-weight: 600;
+    }
+  }
+}
+
+.filter-bar .check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.count {
+  margin: 0 0 8px;
+  color: #666;
+  font-size: 13px;
+}
+
+.entry {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  max-width: 900px;
+
+  &.off {
+    opacity: 0.6;
+  }
+
+  textarea,
+  input:not([type='checkbox']),
+  select {
+    width: 100%;
+  }
+}
+
+.entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eee;
+  color: #555;
+
+  &.warn {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  &.high {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  &.vet {
+    background: #dcfce7;
+    color: #166534;
+  }
+}
+
+.body {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+
+.check-line {
+  margin: 4px 0;
+  padding: 6px 10px;
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  font-size: 14px;
+}
+
+.tags {
+  margin: 4px 0;
+  color: #777;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+
+  a {
+    color: #166534;
+    margin-right: auto;
+  }
+}
+
+.note {
+  color: #92400e;
+  font-size: 13px;
+}
+
+.danger {
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.form-row.check label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+}

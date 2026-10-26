@@ -34,6 +34,16 @@ export class AuthService {
     return this.currentUser()?.role === 'admin';
   }
 
+  // A vet signs in to review the chatbot's knowledge and sees nothing else in this portal.
+  get isVet(): boolean {
+    return this.currentUser()?.role === 'vet';
+  }
+
+  // Where each role lands after signing in.
+  get homePath(): string {
+    return this.isVet ? '/knowledge' : '/dashboard';
+  }
+
   private decode(token: string | null): TokenPayload | null {
     if (!token) return null;
     try {
@@ -48,16 +58,16 @@ export class AuthService {
   }
 
   // Throws a clear error (surfaced by the login page) rather than silently logging in a
-  // non-admin — this portal has nothing to offer a real farmer account, and letting one land on
-  // an empty/erroring dashboard would be a confusing dead end.
+  // farmer or hub account — this portal has nothing to offer them, and letting one land on
+  // an empty/erroring dashboard would be a confusing dead end. Admins and vets may sign in.
   async login(email: string, password: string): Promise<void> {
     const res = await firstValueFrom(
       this.http.post<LoginResponse>(`${API_CONFIG.userUrl}/auth/login/email`, { email, password }),
     );
     const token = res.data.token;
     const payload = this.decode(token);
-    if (payload?.role !== 'admin') {
-      throw new Error('This account is not an admin. Ask an existing admin to promote it first.');
+    if (payload?.role !== 'admin' && payload?.role !== 'vet') {
+      throw new Error('This account is not an admin or a vet. Ask an existing admin to promote it first.');
     }
     localStorage.setItem(STORAGE_KEY, token);
     this.token.set(token);

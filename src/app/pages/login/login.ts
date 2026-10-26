@@ -26,7 +26,7 @@ export class Login {
     this.error.set(null);
     try {
       await this.auth.login(this.email, this.password);
-      this.router.navigate(['/dashboard']);
+      this.router.navigate([this.auth.homePath]);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
